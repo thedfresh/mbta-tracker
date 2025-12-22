@@ -1,0 +1,14 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Secrets
+config/.env
+
+# Logs & data
+logs/
+*.jsonl
+
+# OS noise
+.DS_Store
