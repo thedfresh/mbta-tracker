@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import threading
 import time
 from datetime import datetime, timezone
@@ -10,12 +11,13 @@ from pathlib import Path
 from typing import Any
 
 from src.config import load_config
-from src.data.collector_client import fetch_boarding_schedules, fetch_snapshot
+from src.data.collector_client import fetch_snapshot
 from src.data.poller import PollResult
 from src.logic.scorer import assess_reliability
 from src.rendering import FrameData, TripRow, compose_frame, save_frame
 
 FRAME_PATH = Path("emulator_output/frame.png")
+SCHEDULE_SNAPSHOT_PATH = Path("logs/schedule_snapshots.jsonl")
 
 
 def _parse_time(value: str) -> datetime | None:
@@ -37,6 +39,37 @@ def _minutes_away(now: datetime, dt: datetime) -> int:
 def _format_clock(dt: datetime) -> str:
     value = dt.astimezone().strftime("%I:%M")
     return value.lstrip("0") if value.startswith("0") else value
+
+
+def _load_boarding_schedule_map() -> dict[str, str]:
+    if not SCHEDULE_SNAPSHOT_PATH.exists():
+        return {}
+    last_line = None
+    try:
+        with SCHEDULE_SNAPSHOT_PATH.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                line = line.strip()
+                if line:
+                    last_line = line
+    except Exception:
+        return {}
+
+    if not last_line:
+        return {}
+
+    try:
+        entry = json.loads(last_line)
+    except Exception:
+        return {}
+
+    schedules = entry.get("boarding", {}).get("schedules", []) or []
+    schedule_map: dict[str, str] = {}
+    for sched in schedules:
+        trip_id = sched.get("trip_id")
+        departure_time = sched.get("departure_time")
+        if trip_id and departure_time:
+            schedule_map[trip_id] = departure_time
+    return schedule_map
 
 
 def _build_frame_data(
@@ -183,18 +216,7 @@ def main() -> int:
 
             try:
                 snapshot = fetch_snapshot(api_key)
-                schedules = fetch_boarding_schedules(api_key)
-                schedule_map = {}
-                for sched in schedules:
-                    trip_id = (
-                        sched.get("relationships", {})
-                        .get("trip", {})
-                        .get("data", {})
-                        .get("id")
-                    )
-                    departure_time = sched.get("attributes", {}).get("departure_time")
-                    if trip_id and departure_time:
-                        schedule_map[trip_id] = departure_time
+                schedule_map = _load_boarding_schedule_map()
                 result = PollResult(
                     predictions=snapshot.boarding_predictions,
                     vehicles=snapshot.vehicles,
