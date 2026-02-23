@@ -24,7 +24,7 @@ def test_compose_frame_size_and_mode() -> None:
     data = FrameData(trips=[], ticker_text="Test")
     image = compose_frame(data)
     assert isinstance(image, Image.Image)
-    assert image.size == (128, 64)
+    assert image.size == (192, 64)
     assert image.mode == "RGB"
 
 
@@ -84,4 +84,16 @@ def test_compose_frame_reliability_colors() -> None:
 def test_compose_frame_ticker_smoke() -> None:
     data = FrameData(trips=[TripRow(1, "12:00", GOOD)], ticker_text="Service normal")
     image = compose_frame(data)
-    assert image.size == (128, 64)
+    assert image.size == (192, 64)
+
+
+def test_compose_frame_right_panel_black() -> None:
+    data = FrameData(trips=[TripRow(2, "12:05", GOOD)], ticker_text="Right panel")
+    image = compose_frame(data)
+    pixels = image.load()
+
+    sample_x = [140, 160, 180]
+    sample_y = [0, 10, 20, 30, 40, 50, 63]
+    for x in sample_x:
+        for y in sample_y:
+            assert pixels[x, y] == (0, 0, 0)

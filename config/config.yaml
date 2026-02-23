@@ -6,7 +6,7 @@ mbta:
   poll_interval_seconds: 10
 
 display:
-  width: 128
+  width: 192
   height: 64
   brightness: 80
   scroll_speed_fps: 20

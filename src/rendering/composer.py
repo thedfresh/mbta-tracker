@@ -9,7 +9,9 @@ from PIL import Image, ImageDraw, ImageFont
 from src.logic.scorer import BAD, GOOD, RISKY, UNKNOWN
 from src.rendering.frame_data import FrameData, TripRow
 
-DISPLAY_WIDTH = 128
+PANEL_WIDTH = 64
+TOTAL_PANELS = 3
+DISPLAY_WIDTH = PANEL_WIDTH * TOTAL_PANELS
 DISPLAY_HEIGHT = 64
 
 TRIP_ZONE_HEIGHT = 42
