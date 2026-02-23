@@ -155,7 +155,7 @@ def main() -> int:
             image = compose_frame(frame_data)
             save_frame(image, str(FRAME_PATH))
 
-            timestamp = datetime.utcnow().isoformat()
+            timestamp = datetime.now(timezone.utc).isoformat()
             print(
                 "preview_update",
                 {
