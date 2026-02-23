@@ -7,7 +7,8 @@ Wants=network-online.target
 Type=simple
 WorkingDirectory=/home/dfresh/mbta-tracker
 EnvironmentFile=/home/dfresh/mbta-tracker/.env
-ExecStart=/home/dfresh/mbta-tracker/.venv/bin/python /home/dfresh/mbta-tracker/scripts/collect.py
+Environment=PYTHONPATH=/home/dfresh/mbta-tracker
+ExecStart=/home/dfresh/mbta-tracker/venv/bin/python /home/dfresh/mbta-tracker/scripts/collect.py
 User=dfresh
 Restart=on-failure
 RestartSec=10
