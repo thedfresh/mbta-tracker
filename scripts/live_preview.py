@@ -101,7 +101,7 @@ class PreviewHandler(BaseHTTPRequestHandler):
     <meta http-equiv="refresh" content="10">
     <style>
       body { background: #111; color: #fff; font-family: sans-serif; }
-      img { width: 512px; height: 256px; image-rendering: pixelated; }
+      img { width: 768px; height: 256px; image-rendering: pixelated; }
     </style>
     <title>MBTA Live Preview</title>
   </head>
