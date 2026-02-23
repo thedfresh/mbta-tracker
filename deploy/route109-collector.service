@@ -1,0 +1,18 @@
+[Unit]
+Description=MBTA Route 109 inbound data collector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/dfresh/mbta-tracker
+EnvironmentFile=/home/dfresh/mbta-tracker/.env
+ExecStart=/home/dfresh/mbta-tracker/venv/bin/python /home/dfresh/mbta-tracker/scripts/collect.py
+User=dfresh
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
