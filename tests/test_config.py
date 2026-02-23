@@ -10,7 +10,8 @@ from src.config import AppConfig, load_config
 VALID_YAML = """
 mbta:
   route_id: "109"
-  stop_id: "5522"
+  stop_id: "5483"
+  direction_id: 1
   terminal_stop_id: "7412"
   poll_interval_seconds: 10
 
@@ -41,6 +42,7 @@ def test_load_config_valid(tmp_path, monkeypatch) -> None:
     assert isinstance(config, AppConfig)
     assert config.mbta.api_key == "testkey"
     assert config.mbta.route_id == "109"
+    assert config.mbta.direction_id == 1
     assert config.mbta.terminal_stop_id == "7412"
     assert config.display.width == 128
     assert config.log.level == "INFO"

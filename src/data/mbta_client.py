@@ -20,11 +20,14 @@ class MBTAClient:
         self._api_key = api_key
         self._timeout_seconds = 10
 
-    def get_predictions(self, route_id: str, stop_id: str) -> tuple[list[dict], list[dict]]:
-        """Fetch predictions for a route and stop; returns (predictions, vehicles)."""
+    def get_predictions(
+        self, route_id: str, stop_id: str, direction_id: int
+    ) -> tuple[list[dict], list[dict]]:
+        """Fetch predictions for a route/stop/direction; returns (predictions, vehicles)."""
         params = {
             "filter[route]": route_id,
             "filter[stop]": stop_id,
+            "filter[direction_id]": direction_id,
             "include": "vehicle",
         }
         response_json = self._get("/predictions", params=params)

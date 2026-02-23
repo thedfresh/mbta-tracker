@@ -17,6 +17,7 @@ class MBTAConfig:
     api_key: str
     route_id: str
     stop_id: str
+    direction_id: int
     terminal_stop_id: str
     poll_interval_seconds: int
 
@@ -82,6 +83,7 @@ def load_config(path: str = "config/config.yaml") -> AppConfig:
         api_key=api_key,
         route_id=_require_key(mbta_section, "route_id", "mbta"),
         stop_id=_require_key(mbta_section, "stop_id", "mbta"),
+        direction_id=_require_key(mbta_section, "direction_id", "mbta"),
         terminal_stop_id=_require_key(mbta_section, "terminal_stop_id", "mbta"),
         poll_interval_seconds=_require_key(mbta_section, "poll_interval_seconds", "mbta"),
     )

@@ -28,7 +28,7 @@ def _mock_response(status_code: int, json_data: dict[str, Any] | None = None, te
 def test_get_predictions_returns_data_and_vehicles(mbta_client: MBTAClient) -> None:
     response = _mock_response(200, {"data": [{"id": "p1"}], "included": [{"id": "v1"}]})
     with patch("requests.get", return_value=response) as mock_get:
-        predictions, vehicles = mbta_client.get_predictions("109", "stop1")
+        predictions, vehicles = mbta_client.get_predictions("109", "stop1", 1)
 
     assert predictions == [{"id": "p1"}]
     assert vehicles == [{"id": "v1"}]
@@ -38,7 +38,7 @@ def test_get_predictions_returns_data_and_vehicles(mbta_client: MBTAClient) -> N
 def test_get_predictions_empty_included(mbta_client: MBTAClient) -> None:
     response = _mock_response(200, {"data": [{"id": "p1"}]})
     with patch("requests.get", return_value=response) as mock_get:
-        predictions, vehicles = mbta_client.get_predictions("109", "stop1")
+        predictions, vehicles = mbta_client.get_predictions("109", "stop1", 1)
 
     assert predictions == [{"id": "p1"}]
     assert vehicles == []
