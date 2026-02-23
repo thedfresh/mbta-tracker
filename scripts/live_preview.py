@@ -72,14 +72,13 @@ def _load_boarding_schedule_map() -> dict[str, str]:
     return schedule_map
 
 
-def _build_frame_data(
-    result: PollResult, schedule_map: dict[str, str]
-) -> tuple[FrameData, list[str]]:
+def _build_frame_data(result: PollResult) -> tuple[FrameData, list[str]]:
     now = datetime.now(timezone.utc)
     trips: list[tuple[datetime, TripRow]] = []
     minutes_debug: list[str] = []
     seen_trip_ids: set[str] = set()
 
+    schedule_map = _load_boarding_schedule_map()
     vehicles_by_id = {v.get("id"): v for v in result.vehicles if isinstance(v, dict)}
 
     for pred in result.predictions:
@@ -254,14 +253,13 @@ def main() -> int:
 
             try:
                 snapshot = fetch_snapshot(api_key)
-                schedule_map = _load_boarding_schedule_map()
                 result = PollResult(
                     predictions=snapshot.boarding_predictions,
                     vehicles=snapshot.vehicles,
                     fetched_at=time.time(),
                     error=None,
                 )
-                frame_data, minutes_debug = _build_frame_data(result, schedule_map)
+                frame_data, minutes_debug = _build_frame_data(result)
                 reliability = frame_data.trips[0].reliability if frame_data.trips else "NONE"
                 image = compose_frame(frame_data)
                 save_frame(image, str(FRAME_PATH))
