@@ -42,6 +42,7 @@ TEXT_GAP = 3
 COLOR_TEXT = (255, 255, 255)
 COLOR_CLOCK = (136, 136, 136)
 COLOR_DIM_TEXT = (48, 48, 48)
+COLOR_CLOCK_COMMITTED = (0, 200, 0)
 
 COLOR_GOOD = (0, 200, 0)
 COLOR_RISKY = (220, 180, 0)
@@ -109,7 +110,7 @@ def _draw_trip_cell(draw: ImageDraw.ImageDraw, index: int, trip: TripRow | None)
 
     if trip.cancelled:
         dot_color = COLOR_UNKNOWN
-        text = "CNCLD"
+        text = trip.clock_time or "CNCLD"
         text_color = COLOR_DIM_TEXT
         bbox = draw.textbbox((0, 0), text, font=FONT_CANCELLED)
         text_width = bbox[2] - bbox[0]
@@ -139,10 +140,11 @@ def _draw_trip_cell(draw: ImageDraw.ImageDraw, index: int, trip: TripRow | None)
     clock_height = clock_bbox[3] - clock_bbox[1]
     clock_x = minutes_x + minutes_width + TEXT_GAP
     clock_y = cell_top + (CELL_HEIGHT - clock_height) // 2
+    clock_color = COLOR_CLOCK_COMMITTED if trip.committed else COLOR_CLOCK
 
     draw.ellipse([dot_left, dot_top, dot_right, dot_bottom], fill=dot_color)
     draw.text((minutes_x, minutes_y), minutes_text, font=FONT_MINUTES, fill=COLOR_TEXT)
-    draw.text((clock_x, clock_y), clock_text, font=FONT_CLOCK, fill=COLOR_CLOCK)
+    draw.text((clock_x, clock_y), clock_text, font=FONT_CLOCK, fill=clock_color)
 
 
 def compose_frame(data: FrameData) -> Image.Image:

@@ -75,6 +75,17 @@ def fetch_schedules(api_key: str) -> list[dict[str, Any]]:
     return data.get("data", []) or []
 
 
+def fetch_boarding_schedules(api_key: str) -> list[dict[str, Any]]:
+    params = {
+        "filter[route]": ROUTE_ID,
+        "filter[stop]": BOARDING_STOP_ID,
+        "filter[direction_id]": DIRECTION_ID,
+        "fields[schedule]": SCHEDULE_FIELDS,
+    }
+    data = _get("/schedules", params=params, api_key=api_key)
+    return data.get("data", []) or []
+
+
 def fetch_snapshot(api_key: str) -> CollectorSnapshot:
     return CollectorSnapshot(
         boarding_predictions=fetch_boarding_predictions(api_key),

@@ -122,3 +122,12 @@ def test_station_strip_colors() -> None:
     assert pixels[1, y] == STATION_SULLIVAN
     assert pixels[65, y] == STATION_UNION
     assert pixels[129, y] == STATION_HARVARD
+
+
+def test_cancelled_trip_smoke() -> None:
+    data = FrameData(
+        trips=[TripRow(0, "1:45", UNKNOWN, cancelled=True)],
+        ticker_text="",
+    )
+    image = compose_frame(data)
+    assert image.size == (192, 64)

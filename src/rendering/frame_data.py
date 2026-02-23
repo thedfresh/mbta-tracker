@@ -12,6 +12,7 @@ class TripRow:
     minutes_away: int
     clock_time: str
     reliability: str
+    committed: bool = False
     cancelled: bool = False
 
 

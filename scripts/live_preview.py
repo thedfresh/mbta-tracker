@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from src.config import load_config
-from src.data.collector_client import fetch_snapshot
+from src.data.collector_client import fetch_boarding_schedules, fetch_snapshot
 from src.data.poller import PollResult
 from src.logic.scorer import assess_reliability
 from src.rendering import FrameData, TripRow, compose_frame, save_frame
@@ -39,7 +39,9 @@ def _format_clock(dt: datetime) -> str:
     return value.lstrip("0") if value.startswith("0") else value
 
 
-def _build_frame_data(result: PollResult) -> tuple[FrameData, list[str]]:
+def _build_frame_data(
+    result: PollResult, schedule_map: dict[str, str]
+) -> tuple[FrameData, list[str]]:
     now = datetime.now(timezone.utc)
     trips: list[TripRow] = []
     minutes_debug: list[str] = []
@@ -47,10 +49,24 @@ def _build_frame_data(result: PollResult) -> tuple[FrameData, list[str]]:
     for pred in result.predictions:
         attrs = pred.get("attributes", {}) if isinstance(pred, dict) else {}
         if attrs.get("schedule_relationship") == "CANCELLED":
+            trip_id = (
+                pred.get("relationships", {})
+                .get("trip", {})
+                .get("data", {})
+                .get("id")
+            )
+            scheduled_time = schedule_map.get(trip_id) if trip_id else None
+            if scheduled_time:
+                parsed = _parse_time(scheduled_time)
+                if parsed and parsed < now:
+                    continue
+                clock_time = _format_clock(parsed) if parsed else ""
+            else:
+                clock_time = ""
             trips.append(
                 TripRow(
                     minutes_away=0,
-                    clock_time="",
+                    clock_time=clock_time,
                     reliability="UNKNOWN",
                     cancelled=True,
                 )
@@ -67,11 +83,28 @@ def _build_frame_data(result: PollResult) -> tuple[FrameData, list[str]]:
         minutes = _minutes_away(now, parsed)
         minutes_debug.append(str(minutes))
         assessment = assess_reliability(pred, result.vehicles)
+        vehicle_id = (
+            pred.get("relationships", {})
+            .get("vehicle", {})
+            .get("data", {})
+            .get("id")
+        )
+        committed = False
+        if vehicle_id:
+            vehicles_by_id = {v.get("id"): v for v in result.vehicles if isinstance(v, dict)}
+            vehicle = vehicles_by_id.get(vehicle_id)
+            if vehicle:
+                attrs_v = vehicle.get("attributes", {})
+                direction_id = attrs_v.get("direction_id")
+                seq = attrs_v.get("current_stop_sequence")
+                if direction_id == 1 and isinstance(seq, int) and 1 < seq <= 10:
+                    committed = True
         trips.append(
             TripRow(
                 minutes_away=minutes,
                 clock_time=_format_clock(parsed),
                 reliability=assessment.classification,
+                committed=committed,
             )
         )
         if len(trips) >= 6:
@@ -150,13 +183,25 @@ def main() -> int:
 
             try:
                 snapshot = fetch_snapshot(api_key)
+                schedules = fetch_boarding_schedules(api_key)
+                schedule_map = {}
+                for sched in schedules:
+                    trip_id = (
+                        sched.get("relationships", {})
+                        .get("trip", {})
+                        .get("data", {})
+                        .get("id")
+                    )
+                    departure_time = sched.get("attributes", {}).get("departure_time")
+                    if trip_id and departure_time:
+                        schedule_map[trip_id] = departure_time
                 result = PollResult(
                     predictions=snapshot.boarding_predictions,
                     vehicles=snapshot.vehicles,
                     fetched_at=time.time(),
                     error=None,
                 )
-                frame_data, minutes_debug = _build_frame_data(result)
+                frame_data, minutes_debug = _build_frame_data(result, schedule_map)
                 reliability = frame_data.trips[0].reliability if frame_data.trips else "NONE"
                 image = compose_frame(frame_data)
                 save_frame(image, str(FRAME_PATH))
