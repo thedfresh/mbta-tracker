@@ -5,7 +5,7 @@ from __future__ import annotations
 import io
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any
@@ -25,7 +25,10 @@ def _parse_time(value: str) -> datetime | None:
     try:
         if value.endswith("Z"):
             value = value[:-1] + "+00:00"
-        return datetime.fromisoformat(value)
+        parsed = datetime.fromisoformat(value)
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=timezone.utc)
+        return parsed
     except Exception:
         return None
 
@@ -36,12 +39,12 @@ def _minutes_away(now: datetime, dt: datetime) -> int:
 
 def _format_clock(dt: datetime) -> str:
     # %-I not supported on all platforms; handle leading zero manually
-    value = dt.strftime("%I:%M")
+    value = dt.astimezone().strftime("%I:%M")
     return value.lstrip("0") if value.startswith("0") else value
 
 
 def _build_frame_data(result: PollResult) -> tuple[FrameData, list[str]]:
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     assessment = assess_reliability(result)
 
     trips: list[TripRow] = []
