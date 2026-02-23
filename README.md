@@ -1,12 +1,18 @@
-# MBTA Tracker (Route 109)
+# MBTA Transit Display
 
-This project collects raw MBTA v3 API data for route 109 to analyze
-prediction reliability, vehicle assignment timing, and trip stability.
+Always-on LED matrix display for MBTA Route 109 arrival times.
 
-Current scope:
-- Poll MBTA predictions and vehicles
-- Log raw JSON responses (JSONL)
-- No display or scoring logic yet
+## Structure
+- `src/data/` — MBTA and traffic API clients
+- `src/logic/` — reliability scoring and travel-time estimation
+- `src/rendering/` — scene composition and scroll engine
+- `src/display/` — display driver interface (emulator + hardware)
+- `config/` — configuration
+- `scripts/` — legacy data collection scripts
 
-The project intentionally prioritizes data capture and analysis
-before defining output or user-facing behavior.
+## Setup
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```

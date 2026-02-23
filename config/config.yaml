@@ -1,0 +1,15 @@
+mbta:
+  api_key: ""
+  route_id: "109"
+  stop_id: ""
+  poll_interval_seconds: 10
+
+display:
+  width: 128
+  height: 64
+  brightness: 80
+  scroll_speed_fps: 20
+
+logging:
+  level: "INFO"
+  log_dir: "logs/"

@@ -12,3 +12,9 @@ logs/
 
 # OS noise
 .DS_Store
+logs/
+emulator_output/
+.venv/
+__pycache__/
+*.pyc
+.env
