@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import io
 import threading
 import time
 from datetime import datetime, timezone
@@ -10,11 +9,9 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any
 
-from PIL import Image
-
 from src.config import load_config
-from src.data.mbta_client import MBTAClient
-from src.data.poller import MBTAPoller, PollResult
+from src.data.collector_client import fetch_snapshot
+from src.data.poller import PollResult
 from src.logic.scorer import assess_reliability
 from src.rendering import FrameData, TripRow, compose_frame, save_frame
 
@@ -38,7 +35,6 @@ def _minutes_away(now: datetime, dt: datetime) -> int:
 
 
 def _format_clock(dt: datetime) -> str:
-    # %-I not supported on all platforms; handle leading zero manually
     value = dt.astimezone().strftime("%I:%M")
     return value.lstrip("0") if value.startswith("0") else value
 
@@ -130,45 +126,44 @@ def _run_server() -> None:
 
 def main() -> int:
     config = load_config()
-    client = MBTAClient(config.mbta.api_key)
-    poller = MBTAPoller(
-        client=client,
-        route_id=config.mbta.route_id,
-        stop_id=config.mbta.stop_id,
-        direction_id=config.mbta.direction_id,
-        poll_interval_seconds=config.mbta.poll_interval_seconds,
-    )
-
-    poller.start()
+    api_key = config.mbta.api_key
 
     server_thread = threading.Thread(target=_run_server, daemon=True)
     server_thread.start()
 
     try:
         while True:
-            result = poller.get_latest()
-            if result is None:
-                time.sleep(config.mbta.poll_interval_seconds)
-                continue
-
-            frame_data, minutes_debug = _build_frame_data(result)
-            image = compose_frame(frame_data)
-            save_frame(image, str(FRAME_PATH))
-
             timestamp = datetime.now(timezone.utc).isoformat()
+            minutes_debug: list[str] = []
+            reliability = "NONE"
+
+            try:
+                snapshot = fetch_snapshot(api_key)
+                result = PollResult(
+                    predictions=snapshot.boarding_predictions,
+                    vehicles=snapshot.vehicles,
+                    fetched_at=time.time(),
+                    error=None,
+                )
+                frame_data, minutes_debug = _build_frame_data(result)
+                reliability = frame_data.trips[0].reliability if frame_data.trips else "NONE"
+                image = compose_frame(frame_data)
+                save_frame(image, str(FRAME_PATH))
+            except Exception as exc:
+                print("preview_error", str(exc), flush=True)
+
             print(
                 "preview_update",
                 {
                     "timestamp": timestamp,
                     "minutes_away": minutes_debug,
-                    "reliability": frame_data.trips[0].reliability if frame_data.trips else "NONE",
+                    "reliability": reliability,
                 },
                 flush=True,
             )
 
             time.sleep(config.mbta.poll_interval_seconds)
     except KeyboardInterrupt:
-        poller.stop()
         return 0
 
 
