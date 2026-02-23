@@ -9,7 +9,13 @@ from src.data.poller import MBTAPoller, PollResult
 
 def test_get_latest_initially_none() -> None:
     client = MagicMock()
-    poller = MBTAPoller(client=client, route_id="109", stop_id="stop1", poll_interval_seconds=1)
+    poller = MBTAPoller(
+        client=client,
+        route_id="109",
+        stop_id="stop1",
+        direction_id=1,
+        poll_interval_seconds=1,
+    )
 
     assert poller.get_latest() is None
 
@@ -17,7 +23,13 @@ def test_get_latest_initially_none() -> None:
 def test_fetch_once_success() -> None:
     client = MagicMock()
     client.get_predictions.return_value = ([{"id": "p1"}], [{"id": "v1"}])
-    poller = MBTAPoller(client=client, route_id="109", stop_id="stop1", poll_interval_seconds=1)
+    poller = MBTAPoller(
+        client=client,
+        route_id="109",
+        stop_id="stop1",
+        direction_id=1,
+        poll_interval_seconds=1,
+    )
 
     result = poller._fetch_once()
 
@@ -26,24 +38,38 @@ def test_fetch_once_success() -> None:
     assert result.error is None
     assert isinstance(result.fetched_at, float)
     assert result.fetched_at > 0
+    client.get_predictions.assert_called_once_with("109", "stop1", 1)
 
 
 def test_fetch_once_client_error() -> None:
     client = MagicMock()
     client.get_predictions.side_effect = MBTAClientError("timeout")
-    poller = MBTAPoller(client=client, route_id="109", stop_id="stop1", poll_interval_seconds=1)
+    poller = MBTAPoller(
+        client=client,
+        route_id="109",
+        stop_id="stop1",
+        direction_id=1,
+        poll_interval_seconds=1,
+    )
 
     result = poller._fetch_once()
 
     assert result.predictions == []
     assert result.vehicles == []
     assert result.error == "timeout"
+    client.get_predictions.assert_called_once_with("109", "stop1", 1)
 
 
 def test_start_and_stop() -> None:
     client = MagicMock()
     client.get_predictions.return_value = ([], [])
-    poller = MBTAPoller(client=client, route_id="109", stop_id="stop1", poll_interval_seconds=0.1)
+    poller = MBTAPoller(
+        client=client,
+        route_id="109",
+        stop_id="stop1",
+        direction_id=1,
+        poll_interval_seconds=0.1,
+    )
 
     poller.start()
 

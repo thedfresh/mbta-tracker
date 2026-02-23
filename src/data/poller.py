@@ -27,11 +27,13 @@ class MBTAPoller:
         client: MBTAClient,
         route_id: str,
         stop_id: str,
+        direction_id: int,
         poll_interval_seconds: int,
     ) -> None:
         self._client = client
         self._route_id = route_id
         self._stop_id = stop_id
+        self._direction_id = direction_id
         self._poll_interval_seconds = poll_interval_seconds
         self._latest: PollResult | None = None
         self._lock = threading.Lock()
@@ -65,7 +67,7 @@ class MBTAPoller:
     def _fetch_once(self) -> PollResult:
         try:
             predictions, vehicles = self._client.get_predictions(
-                self._route_id, self._stop_id
+                self._route_id, self._stop_id, self._direction_id
             )
             return PollResult(
                 predictions=predictions,

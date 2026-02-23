@@ -132,6 +132,7 @@ def main() -> int:
         client=client,
         route_id=config.mbta.route_id,
         stop_id=config.mbta.stop_id,
+        direction_id=config.mbta.direction_id,
         poll_interval_seconds=config.mbta.poll_interval_seconds,
     )
 
