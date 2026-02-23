@@ -1,0 +1,25 @@
+"""Data structures for rendering frames."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class TripRow:
+    """Single trip row for display."""
+
+    minutes_away: int
+    clock_time: str
+    reliability: str
+
+
+@dataclass(frozen=True)
+class FrameData:
+    """Frame data for the renderer."""
+
+    trips: list[TripRow]
+    ticker_text: str
+
+
+__all__ = ["TripRow", "FrameData"]
