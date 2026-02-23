@@ -23,10 +23,9 @@ def _format_clock(dt: datetime) -> str:
     return clock.lstrip("0") if clock.startswith("0") else clock
 
 
-def _minutes_until(departure_iso: str, now: datetime) -> int:
+def _minutes_until(departure_iso: str, now: datetime) -> float:
     dep = _parse_ts(departure_iso)
-    minutes = (dep - now).total_seconds() / 60.0
-    return max(int(round(minutes)), 0)
+    return (dep - now).total_seconds() / 60.0
 
 
 def _load_first_entry(path: str) -> dict[str, Any]:

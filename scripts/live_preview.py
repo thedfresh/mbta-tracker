@@ -32,8 +32,8 @@ def _parse_time(value: str) -> datetime | None:
         return None
 
 
-def _minutes_away(now: datetime, dt: datetime) -> int:
-    return max(int(round((dt - now).total_seconds() / 60.0)), 0)
+def _minutes_away(now: datetime, dt: datetime) -> float:
+    return (dt - now).total_seconds() / 60.0
 
 
 def _format_clock(dt: datetime) -> str:
@@ -135,7 +135,7 @@ def _build_frame_data(
             continue
 
         assessment = score_trip(pred, vehicles_by_id, minutes)
-        minutes_debug.append(str(minutes))
+        minutes_debug.append(f"{minutes:.1f}")
 
         vehicle_rel = rels.get("vehicle") or {}
         vehicle_data = vehicle_rel.get("data") or {}

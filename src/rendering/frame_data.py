@@ -9,7 +9,7 @@ from dataclasses import dataclass
 class TripRow:
     """Single trip cell for display."""
 
-    minutes_away: int
+    minutes_away: float
     clock_time: str
     reliability: str
     departed: bool = False

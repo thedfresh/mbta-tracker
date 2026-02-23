@@ -129,7 +129,7 @@ def _draw_trip_cell(draw: ImageDraw.ImageDraw, index: int, trip: TripRow | None)
         return
 
     dot_color = COLOR_GOOD if trip.departed else _dot_color(trip.reliability, trip.trend)
-    minutes_text = f"{trip.minutes_away}m"
+    minutes_text = "NOW" if trip.minutes_away <= 0.5 else f"{round(trip.minutes_away)}m"
     minutes_bbox = draw.textbbox((0, 0), minutes_text, font=FONT_MINUTES)
     minutes_width = minutes_bbox[2] - minutes_bbox[0]
     minutes_height = minutes_bbox[3] - minutes_bbox[1]
