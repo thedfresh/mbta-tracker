@@ -94,7 +94,7 @@ def test_compose_frame_reliability_colors() -> None:
     data = FrameData(
         trips=[
             TripRow(1, "12:00", GOOD),
-            TripRow(2, "12:02", RISKY),
+            TripRow(2, "12:02", RISKY, trend="deteriorating"),
             TripRow(3, "12:03", UNKNOWN),
         ],
         ticker_text="",
@@ -103,7 +103,7 @@ def test_compose_frame_reliability_colors() -> None:
     pixels = image.load()
 
     assert pixels[_dot_center(0)] == COLOR_GOOD
-    assert pixels[_dot_center(1)] == COLOR_RISKY
+    assert pixels[_dot_center(1)] == (230, 140, 0)
     assert pixels[_dot_center(2)] == COLOR_UNKNOWN
 
 

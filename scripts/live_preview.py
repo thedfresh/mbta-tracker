@@ -13,7 +13,7 @@ from typing import Any
 from src.config import load_config
 from src.data.collector_client import fetch_snapshot
 from src.data.poller import PollResult
-from src.logic.scorer import score_trip
+from src.logic.scorer import estimate_time_to_linden, score_trip
 from src.rendering import FrameData, TripRow, compose_frame, save_frame
 
 FRAME_PATH = Path("emulator_output/frame.png")
@@ -72,7 +72,9 @@ def _load_boarding_schedule_map() -> dict[str, str]:
     return schedule_map
 
 
-def _build_frame_data(result: PollResult) -> tuple[FrameData, list[str]]:
+def _build_frame_data(
+    result: PollResult, drift_cache: dict[str, float]
+) -> tuple[FrameData, list[str], dict[str, float]]:
     now = datetime.now(timezone.utc)
     trips: list[tuple[datetime, TripRow]] = []
     minutes_debug: list[str] = []
@@ -80,6 +82,7 @@ def _build_frame_data(result: PollResult) -> tuple[FrameData, list[str]]:
 
     schedule_map = _load_boarding_schedule_map()
     vehicles_by_id = {v.get("id"): v for v in result.vehicles if isinstance(v, dict)}
+    next_cache: dict[str, float] = {}
 
     for pred in result.predictions:
         if not isinstance(pred, dict):
@@ -125,6 +128,7 @@ def _build_frame_data(result: PollResult) -> tuple[FrameData, list[str]]:
                         clock_time=clock_time,
                         reliability="UNKNOWN",
                         cancelled=True,
+                        trend="stable",
                     ),
                 )
             )
@@ -137,6 +141,8 @@ def _build_frame_data(result: PollResult) -> tuple[FrameData, list[str]]:
         vehicle_data = vehicle_rel.get("data") or {}
         vehicle_id = vehicle_data.get("id")
         departed = False
+        trend = "stable"
+        time_needed = None
         if vehicle_id:
             vehicle = vehicles_by_id.get(vehicle_id)
             if vehicle:
@@ -145,6 +151,16 @@ def _build_frame_data(result: PollResult) -> tuple[FrameData, list[str]]:
                 seq = attrs_v.get("current_stop_sequence")
                 if direction_id == 1 and isinstance(seq, int) and 1 < seq <= 10:
                     departed = True
+                time_needed = estimate_time_to_linden(vehicle)
+                if time_needed is not None and trip_id:
+                    prev = drift_cache.get(trip_id)
+                    if prev is not None:
+                        delta = prev - time_needed
+                        if delta > 1:
+                            trend = "improving"
+                        elif delta < -1:
+                            trend = "deteriorating"
+                    next_cache[trip_id] = time_needed
 
         trips.append(
             (
@@ -154,6 +170,7 @@ def _build_frame_data(result: PollResult) -> tuple[FrameData, list[str]]:
                     clock_time=_format_clock(dep_time),
                     reliability=assessment.classification,
                     departed=departed,
+                    trend=trend,
                 ),
             )
         )
@@ -177,6 +194,7 @@ def _build_frame_data(result: PollResult) -> tuple[FrameData, list[str]]:
                         clock_time=_format_clock(dep_time),
                         reliability=assessment.classification,
                         scheduled_only=True,
+                        trend="stable",
                     ),
                 )
             )
@@ -185,7 +203,7 @@ def _build_frame_data(result: PollResult) -> tuple[FrameData, list[str]]:
 
     trips_sorted = sorted(trips, key=lambda t: t[0])[:6]
     data = FrameData(trips=[trip for _, trip in trips_sorted], ticker_text="")
-    return data, minutes_debug
+    return data, minutes_debug, next_cache
 
 
 class PreviewHandler(BaseHTTPRequestHandler):
@@ -250,6 +268,7 @@ def main() -> int:
     server_thread.start()
 
     try:
+        drift_cache: dict[str, float] = {}
         while True:
             timestamp = datetime.now(timezone.utc).isoformat()
             minutes_debug: list[str] = []
@@ -263,7 +282,7 @@ def main() -> int:
                     fetched_at=time.time(),
                     error=None,
                 )
-                frame_data, minutes_debug = _build_frame_data(result)
+                frame_data, minutes_debug, drift_cache = _build_frame_data(result, drift_cache)
                 reliability = frame_data.trips[0].reliability if frame_data.trips else "NONE"
                 image = compose_frame(frame_data)
                 save_frame(image, str(FRAME_PATH))

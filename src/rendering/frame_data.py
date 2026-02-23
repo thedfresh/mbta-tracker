@@ -15,6 +15,7 @@ class TripRow:
     departed: bool = False
     cancelled: bool = False
     scheduled_only: bool = False
+    trend: str = "stable"
 
 
 @dataclass(frozen=True)

@@ -7,6 +7,14 @@ import time
 
 from src.data.poller import PollResult
 
+INBOUND_END_SEQ = 44
+OUTBOUND_END_SEQ = 41
+INBOUND_DURATION_MIN = 66.0
+OUTBOUND_DURATION_MIN = 54.0
+
+FEASIBILITY_GOOD_BUFFER_MIN = 10.0
+FEASIBILITY_RISKY_BUFFER_MIN = 20.0
+
 
 GOOD = "GOOD"
 RISKY = "RISKY"
@@ -79,7 +87,41 @@ def score_trip(
     if not vehicle:
         return ReliabilityAssessment(RISKY, "Assigned vehicle missing")
 
-    return ReliabilityAssessment(GOOD, "Vehicle assigned")
+    time_needed = estimate_time_to_linden(vehicle)
+    if time_needed is None:
+        return ReliabilityAssessment(RISKY, "Vehicle missing position")
+
+    return score_feasibility(time_needed, minutes_until)
+
+
+def estimate_time_to_linden(vehicle: dict) -> float | None:
+    """Estimate minutes needed for a vehicle to reach Linden Sq."""
+    attrs = vehicle.get("attributes", {}) if isinstance(vehicle, dict) else {}
+    direction_id = attrs.get("direction_id")
+    seq = attrs.get("current_stop_sequence")
+    if direction_id is None or seq is None or not isinstance(seq, int):
+        return None
+
+    if direction_id == 1:
+        if seq <= 1:
+            return 0.0
+        remaining_inbound = max(INBOUND_END_SEQ - seq, 0) / INBOUND_END_SEQ * INBOUND_DURATION_MIN
+        return remaining_inbound + OUTBOUND_DURATION_MIN
+
+    if direction_id == 0:
+        remaining_outbound = max(OUTBOUND_END_SEQ - seq, 0) / OUTBOUND_END_SEQ * OUTBOUND_DURATION_MIN
+        return remaining_outbound
+
+    return None
+
+
+def score_feasibility(time_needed: float, time_available: int) -> ReliabilityAssessment:
+    """Score feasibility using time needed vs time available."""
+    if time_needed <= time_available - FEASIBILITY_GOOD_BUFFER_MIN:
+        return ReliabilityAssessment(GOOD, "Feasible")
+    if time_needed <= time_available + FEASIBILITY_RISKY_BUFFER_MIN:
+        return ReliabilityAssessment(RISKY, "Tight timing")
+    return ReliabilityAssessment(BAD, "Unlikely to make it")
 
 
 def assess_poll(result: PollResult) -> ReliabilityAssessment:
@@ -113,4 +155,6 @@ __all__ = [
     "assess_reliability",
     "assess_poll",
     "score_trip",
+    "estimate_time_to_linden",
+    "score_feasibility",
 ]

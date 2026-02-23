@@ -3,7 +3,17 @@ from __future__ import annotations
 import time
 
 from src.data.poller import PollResult
-from src.logic.scorer import BAD, GOOD, RISKY, UNKNOWN, assess_poll, assess_reliability
+from src.logic.scorer import (
+    BAD,
+    GOOD,
+    RISKY,
+    UNKNOWN,
+    assess_poll,
+    assess_reliability,
+    estimate_time_to_linden,
+    score_feasibility,
+    score_trip,
+)
 
 
 def _poll_result(
@@ -89,3 +99,21 @@ def test_assess_poll_skips_cancelled() -> None:
 
     assert assessment.classification == UNKNOWN
     assert "No active predictions" in assessment.reason
+
+
+def test_estimate_time_to_linden_inbound() -> None:
+    vehicle = {"attributes": {"direction_id": 1, "current_stop_sequence": 10}}
+    minutes = estimate_time_to_linden(vehicle)
+    assert minutes is not None
+    assert minutes > 0
+
+
+def test_score_feasibility_good() -> None:
+    assessment = score_feasibility(5, 30)
+    assert assessment.classification == GOOD
+
+
+def test_score_trip_unassigned_bad() -> None:
+    prediction = _prediction(vehicle_id=None)
+    assessment = score_trip(prediction, {}, 5)
+    assert assessment.classification == BAD

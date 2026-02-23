@@ -46,6 +46,7 @@ COLOR_CLOCK_COMMITTED = (0, 200, 0)
 
 COLOR_GOOD = (0, 200, 0)
 COLOR_RISKY = (220, 180, 0)
+COLOR_RISKY_DETERIORATING = (230, 140, 0)
 COLOR_BAD = (200, 0, 0)
 COLOR_UNKNOWN = (72, 72, 72)
 COLOR_PLACEHOLDER_DOT = (72, 72, 72)
@@ -73,11 +74,11 @@ FONT_CANCELLED = ImageFont.truetype(str(FONT_REGULAR), 8)
 FONT_STATION = ImageFont.truetype(str(FONT_BOLD), 10)
 
 
-def _dot_color(reliability: str) -> tuple[int, int, int]:
+def _dot_color(reliability: str, trend: str) -> tuple[int, int, int]:
     if reliability == GOOD:
         return COLOR_GOOD
     if reliability == RISKY:
-        return COLOR_RISKY
+        return COLOR_RISKY_DETERIORATING if trend == "deteriorating" else COLOR_RISKY
     if reliability == BAD:
         return COLOR_BAD
     if reliability == UNKNOWN:
@@ -127,7 +128,7 @@ def _draw_trip_cell(draw: ImageDraw.ImageDraw, index: int, trip: TripRow | None)
         )
         return
 
-    dot_color = _dot_color(trip.reliability)
+    dot_color = _dot_color(trip.reliability, trip.trend)
     minutes_text = f"{trip.minutes_away}m"
     minutes_bbox = draw.textbbox((0, 0), minutes_text, font=FONT_MINUTES)
     minutes_width = minutes_bbox[2] - minutes_bbox[0]
