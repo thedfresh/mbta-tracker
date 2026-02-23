@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 from typing import Any
 
+from dotenv import load_dotenv
 import yaml
 
 
@@ -15,6 +17,7 @@ class MBTAConfig:
     api_key: str
     route_id: str
     stop_id: str
+    terminal_stop_id: str
     poll_interval_seconds: int
 
 
@@ -53,6 +56,8 @@ def _require_key(mapping: dict[str, Any], key: str, context: str) -> Any:
 
 def load_config(path: str = "config/config.yaml") -> AppConfig:
     """Load application configuration from a YAML file."""
+    load_dotenv()
+    api_key = os.environ.get("MBTA_API_KEY", "")
     try:
         with open(path, "r", encoding="utf-8") as handle:
             data = yaml.safe_load(handle)
@@ -74,9 +79,10 @@ def load_config(path: str = "config/config.yaml") -> AppConfig:
         raise ValueError("'logging' config must be a mapping")
 
     mbta = MBTAConfig(
-        api_key=_require_key(mbta_section, "api_key", "mbta"),
+        api_key=api_key,
         route_id=_require_key(mbta_section, "route_id", "mbta"),
         stop_id=_require_key(mbta_section, "stop_id", "mbta"),
+        terminal_stop_id=_require_key(mbta_section, "terminal_stop_id", "mbta"),
         poll_interval_seconds=_require_key(mbta_section, "poll_interval_seconds", "mbta"),
     )
 
@@ -87,9 +93,9 @@ def load_config(path: str = "config/config.yaml") -> AppConfig:
         scroll_speed_fps=_require_key(display_section, "scroll_speed_fps", "display"),
     )
 
-    log = LoggingConfig(
+    logging = LoggingConfig(
         level=_require_key(logging_section, "level", "logging"),
         log_dir=_require_key(logging_section, "log_dir", "logging"),
     )
 
-    return AppConfig(mbta=mbta, display=display, log=log)
+    return AppConfig(mbta=mbta, display=display, log=logging)

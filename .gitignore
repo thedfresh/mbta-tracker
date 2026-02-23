@@ -18,3 +18,4 @@ emulator_output/
 __pycache__/
 *.pyc
 .env
+.env

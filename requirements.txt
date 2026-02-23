@@ -2,3 +2,4 @@ requests
 pillow
 pyyaml
 pytest
+python-dotenv

@@ -9,9 +9,9 @@ from src.config import AppConfig, load_config
 
 VALID_YAML = """
 mbta:
-  api_key: "key"
   route_id: "109"
-  stop_id: "stop1"
+  stop_id: "5522"
+  terminal_stop_id: "7412"
   poll_interval_seconds: 10
 
 display:
@@ -32,13 +32,16 @@ def _write_yaml(tmp_path, contents: str) -> str:
     return str(path)
 
 
-def test_load_config_valid(tmp_path) -> None:
+def test_load_config_valid(tmp_path, monkeypatch) -> None:
     path = _write_yaml(tmp_path, VALID_YAML)
 
+    monkeypatch.setenv("MBTA_API_KEY", "testkey")
     config = load_config(path)
 
     assert isinstance(config, AppConfig)
+    assert config.mbta.api_key == "testkey"
     assert config.mbta.route_id == "109"
+    assert config.mbta.terminal_stop_id == "7412"
     assert config.display.width == 128
     assert config.log.level == "INFO"
 

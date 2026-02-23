@@ -1,7 +1,7 @@
 mbta:
-  api_key: ""
   route_id: "109"
-  stop_id: ""
+  stop_id: "5522"
+  terminal_stop_id: "7412"
   poll_interval_seconds: 10
 
 display:
