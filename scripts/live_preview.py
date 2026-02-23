@@ -18,6 +18,7 @@ from src.rendering import FrameData, TripRow, compose_frame, save_frame
 
 FRAME_PATH = Path("emulator_output/frame.png")
 SCHEDULE_SNAPSHOT_PATH = Path("logs/schedule_snapshots.jsonl")
+DEBUG_TREND = True
 
 
 def _parse_time(value: str) -> datetime | None:
@@ -161,6 +162,16 @@ def _build_frame_data(
                         elif delta < -1:
                             trend = "deteriorating"
                     next_cache[trip_id] = time_needed
+                    if DEBUG_TREND:
+                        print(
+                            "trend_debug",
+                            {
+                                "trip_id": trip_id,
+                                "time_needed": round(time_needed, 1),
+                                "trend": trend,
+                            },
+                            flush=True,
+                        )
 
         trips.append(
             (

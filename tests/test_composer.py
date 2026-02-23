@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PIL import Image
+from PIL import Image, ImageChops
 
 from src.logic.scorer import BAD, GOOD, RISKY, UNKNOWN
 from src.rendering.composer import (
@@ -131,3 +131,22 @@ def test_cancelled_trip_smoke() -> None:
     )
     image = compose_frame(data)
     assert image.size == (192, 64)
+
+
+def test_minutes_now_thresholds() -> None:
+    data_now = FrameData(trips=[TripRow(0.9, "12:00", GOOD)], ticker_text="")
+    image_now = compose_frame(data_now)
+    data_now_low = FrameData(trips=[TripRow(0.4, "12:00", GOOD)], ticker_text="")
+    image_now_low = compose_frame(data_now_low)
+    data_one = FrameData(trips=[TripRow(1.1, "12:00", GOOD)], ticker_text="")
+    image_one = compose_frame(data_one)
+    assert ImageChops.difference(image_now, image_now_low).getbbox() is None
+    assert ImageChops.difference(image_now, image_one).getbbox() is not None
+
+
+def test_minutes_rounding_thresholds() -> None:
+    data_one = FrameData(trips=[TripRow(1.4, "12:00", GOOD)], ticker_text="")
+    image_one = compose_frame(data_one)
+    data_two = FrameData(trips=[TripRow(1.6, "12:00", GOOD)], ticker_text="")
+    image_two = compose_frame(data_two)
+    assert ImageChops.difference(image_one, image_two).getbbox() is not None

@@ -108,6 +108,18 @@ def test_estimate_time_to_linden_inbound() -> None:
     assert minutes > 0
 
 
+def test_estimate_time_to_linden_seq1_dir0() -> None:
+    vehicle = {"attributes": {"direction_id": 0, "current_stop_sequence": 1}}
+    minutes = estimate_time_to_linden(vehicle)
+    assert minutes == 0.0
+
+
+def test_estimate_time_to_linden_seq1_dir1() -> None:
+    vehicle = {"attributes": {"direction_id": 1, "current_stop_sequence": 1}}
+    minutes = estimate_time_to_linden(vehicle)
+    assert minutes == 0.0
+
+
 def test_score_feasibility_good() -> None:
     assessment = score_feasibility(5, 30)
     assert assessment.classification == GOOD
