@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 import requests
 
 from src.data.collector_client import (
+    BOARDING_STOP_ID,
     DIRECTION_ID,
     MBTA_API_BASE,
     ROUTE_ID,
@@ -66,6 +67,17 @@ def _fetch_transfer_predictions(api_key: str, stop_id: str) -> list[dict[str, An
         "filter[direction_id]": DIRECTION_ID,
     }
     data = _get("/predictions", params=params, api_key=api_key)
+    return data.get("data", []) or []
+
+
+def _fetch_stop_schedules(api_key: str, stop_id: str) -> list[dict[str, Any]]:
+    params = {
+        "filter[route]": ROUTE_ID,
+        "filter[stop]": stop_id,
+        "filter[direction_id]": DIRECTION_ID,
+        "fields[schedule]": "departure_time,stop_sequence",
+    }
+    data = _get("/schedules", params=params, api_key=api_key)
     return data.get("data", []) or []
 
 
@@ -186,16 +198,20 @@ def main() -> int:
         now = time.time()
         if now - last_schedule_snapshot >= SCHEDULE_SNAPSHOT_INTERVAL_SECONDS:
             snapshot_error = None
-            schedules: list[dict[str, Any]] = []
+            terminal_schedules: list[dict[str, Any]] = []
+            boarding_schedules: list[dict[str, Any]] = []
             try:
-                schedules_raw = fetch_schedules(api_key)
-                schedules = [_schedule_record(s) for s in schedules_raw]
+                terminal_raw = fetch_schedules(api_key)
+                terminal_schedules = [_schedule_record(s) for s in terminal_raw]
+                boarding_raw = _fetch_stop_schedules(api_key, BOARDING_STOP_ID)
+                boarding_schedules = [_schedule_record(s) for s in boarding_raw]
             except Exception as exc:
                 snapshot_error = str(exc)
 
             snapshot_record = {
                 "timestamp": timestamp,
-                "schedules": schedules,
+                "terminal": {"schedules": terminal_schedules},
+                "boarding": {"schedules": boarding_schedules},
                 "error": snapshot_error,
             }
             _write_jsonl(SCHEDULE_LOG_PATH, snapshot_record)
