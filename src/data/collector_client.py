@@ -39,7 +39,6 @@ def fetch_boarding_predictions(api_key: str) -> list[dict[str, Any]]:
         "filter[route]": ROUTE_ID,
         "filter[stop]": BOARDING_STOP_ID,
         "filter[direction_id]": DIRECTION_ID,
-        "fields[prediction]": PREDICTION_FIELDS_BOARDING,
     }
     data = _get("/predictions", params=params, api_key=api_key)
     return data.get("data", []) or []
