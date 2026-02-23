@@ -86,7 +86,9 @@ def _build_frame_data(result: PollResult) -> tuple[FrameData, list[str]]:
             continue
         attrs = pred.get("attributes", {})
         rels = pred.get("relationships", {})
-        trip_id = rels.get("trip", {}).get("data", {}).get("id")
+        trip_rel = rels.get("trip") or {}
+        trip_data = trip_rel.get("data") or {}
+        trip_id = trip_data.get("id")
         schedule_relationship = attrs.get("schedule_relationship")
 
         dep_raw = attrs.get("arrival_time") or attrs.get("departure_time")
@@ -131,7 +133,9 @@ def _build_frame_data(result: PollResult) -> tuple[FrameData, list[str]]:
         assessment = score_trip(pred, vehicles_by_id, minutes)
         minutes_debug.append(str(minutes))
 
-        vehicle_id = rels.get("vehicle", {}).get("data", {}).get("id")
+        vehicle_rel = rels.get("vehicle") or {}
+        vehicle_data = vehicle_rel.get("data") or {}
+        vehicle_id = vehicle_data.get("id")
         departed = False
         if vehicle_id:
             vehicle = vehicles_by_id.get(vehicle_id)
