@@ -41,13 +41,14 @@ def _format_clock(dt: datetime) -> str:
 
 def _build_frame_data(result: PollResult) -> tuple[FrameData, list[str]]:
     now = datetime.now(timezone.utc)
-    assessment = assess_reliability(result)
-
     trips: list[TripRow] = []
     minutes_debug: list[str] = []
+    ticker_reason = "No active predictions"
 
     for pred in result.predictions:
         attrs = pred.get("attributes", {}) if isinstance(pred, dict) else {}
+        if attrs.get("schedule_relationship") == "CANCELLED":
+            continue
         time_raw = attrs.get("arrival_time") or attrs.get("departure_time")
         if not time_raw:
             continue
@@ -56,6 +57,9 @@ def _build_frame_data(result: PollResult) -> tuple[FrameData, list[str]]:
             continue
         minutes = _minutes_away(now, parsed)
         minutes_debug.append(str(minutes))
+        assessment = assess_reliability(pred, result.vehicles)
+        if not trips:
+            ticker_reason = assessment.reason
         trips.append(
             TripRow(
                 minutes_away=minutes,
@@ -66,7 +70,7 @@ def _build_frame_data(result: PollResult) -> tuple[FrameData, list[str]]:
         if len(trips) >= 3:
             break
 
-    data = FrameData(trips=trips, ticker_text=assessment.reason)
+    data = FrameData(trips=trips, ticker_text=ticker_reason)
     return data, minutes_debug
 
 

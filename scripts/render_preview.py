@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Any
 
 from src.data.poller import PollResult
-from src.logic.scorer import assess_reliability, UNKNOWN
+from src.logic.scorer import assess_poll, UNKNOWN
 from src.rendering import FrameData, TripRow, compose_frame, save_frame
 
 
@@ -63,7 +63,7 @@ def _build_from_raw(entry: dict[str, Any]) -> tuple[list[TripRow], str]:
     vehicles = [v for v in (data.get("included", []) or []) if v.get("type") == "vehicle"]
 
     poll = PollResult(predictions=predictions, vehicles=vehicles, fetched_at=timestamp.timestamp(), error=None)
-    assessment = assess_reliability(poll)
+    assessment = assess_poll(poll)
 
     trips = []
     for idx, pred in enumerate(predictions[:3]):
