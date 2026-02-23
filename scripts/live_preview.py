@@ -43,11 +43,20 @@ def _build_frame_data(result: PollResult) -> tuple[FrameData, list[str]]:
     now = datetime.now(timezone.utc)
     trips: list[TripRow] = []
     minutes_debug: list[str] = []
-    ticker_reason = "No active predictions"
 
     for pred in result.predictions:
         attrs = pred.get("attributes", {}) if isinstance(pred, dict) else {}
         if attrs.get("schedule_relationship") == "CANCELLED":
+            trips.append(
+                TripRow(
+                    minutes_away=0,
+                    clock_time="",
+                    reliability="UNKNOWN",
+                    cancelled=True,
+                )
+            )
+            if len(trips) >= 6:
+                break
             continue
         time_raw = attrs.get("arrival_time") or attrs.get("departure_time")
         if not time_raw:
@@ -58,8 +67,6 @@ def _build_frame_data(result: PollResult) -> tuple[FrameData, list[str]]:
         minutes = _minutes_away(now, parsed)
         minutes_debug.append(str(minutes))
         assessment = assess_reliability(pred, result.vehicles)
-        if not trips:
-            ticker_reason = assessment.reason
         trips.append(
             TripRow(
                 minutes_away=minutes,
@@ -67,10 +74,10 @@ def _build_frame_data(result: PollResult) -> tuple[FrameData, list[str]]:
                 reliability=assessment.classification,
             )
         )
-        if len(trips) >= 3:
+        if len(trips) >= 6:
             break
 
-    data = FrameData(trips=trips, ticker_text=ticker_reason)
+    data = FrameData(trips=trips, ticker_text="")
     return data, minutes_debug
 
 
