@@ -140,7 +140,7 @@ def _draw_trip_cell(draw: ImageDraw.ImageDraw, index: int, trip: TripRow | None)
     clock_height = clock_bbox[3] - clock_bbox[1]
     clock_x = minutes_x + minutes_width + TEXT_GAP
     clock_y = cell_top + (CELL_HEIGHT - clock_height) // 2
-    clock_color = COLOR_CLOCK_COMMITTED if trip.committed else COLOR_CLOCK
+    clock_color = COLOR_CLOCK_COMMITTED if trip.departed else COLOR_CLOCK
 
     draw.ellipse([dot_left, dot_top, dot_right, dot_bottom], fill=dot_color)
     draw.text((minutes_x, minutes_y), minutes_text, font=FONT_MINUTES, fill=COLOR_TEXT)

@@ -12,8 +12,9 @@ class TripRow:
     minutes_away: int
     clock_time: str
     reliability: str
-    committed: bool = False
+    departed: bool = False
     cancelled: bool = False
+    scheduled_only: bool = False
 
 
 @dataclass(frozen=True)

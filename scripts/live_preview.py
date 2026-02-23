@@ -13,7 +13,7 @@ from typing import Any
 from src.config import load_config
 from src.data.collector_client import fetch_snapshot
 from src.data.poller import PollResult
-from src.logic.scorer import assess_reliability
+from src.logic.scorer import score_trip
 from src.rendering import FrameData, TripRow, compose_frame, save_frame
 
 FRAME_PATH = Path("emulator_output/frame.png")
@@ -76,74 +76,112 @@ def _build_frame_data(
     result: PollResult, schedule_map: dict[str, str]
 ) -> tuple[FrameData, list[str]]:
     now = datetime.now(timezone.utc)
-    trips: list[TripRow] = []
+    trips: list[tuple[datetime, TripRow]] = []
     minutes_debug: list[str] = []
+    seen_trip_ids: set[str] = set()
+
+    vehicles_by_id = {v.get("id"): v for v in result.vehicles if isinstance(v, dict)}
 
     for pred in result.predictions:
-        attrs = pred.get("attributes", {}) if isinstance(pred, dict) else {}
-        if attrs.get("schedule_relationship") == "CANCELLED":
-            trip_id = (
-                pred.get("relationships", {})
-                .get("trip", {})
-                .get("data", {})
-                .get("id")
-            )
+        if not isinstance(pred, dict):
+            continue
+        attrs = pred.get("attributes", {})
+        rels = pred.get("relationships", {})
+        trip_id = rels.get("trip", {}).get("data", {}).get("id")
+        schedule_relationship = attrs.get("schedule_relationship")
+
+        dep_raw = attrs.get("arrival_time") or attrs.get("departure_time")
+        if not dep_raw:
+            continue
+        dep_time = _parse_time(dep_raw)
+        if not dep_time:
+            continue
+        minutes = _minutes_away(now, dep_time)
+        if minutes > 90:
+            continue
+
+        if trip_id:
+            seen_trip_ids.add(trip_id)
+
+        if schedule_relationship == "CANCELLED":
             scheduled_time = schedule_map.get(trip_id) if trip_id else None
             if scheduled_time:
-                parsed = _parse_time(scheduled_time)
-                if parsed and parsed < now:
+                scheduled_dt = _parse_time(scheduled_time)
+                if scheduled_dt and scheduled_dt < now:
                     continue
-                clock_time = _format_clock(parsed) if parsed else ""
+                clock_time = _format_clock(scheduled_dt) if scheduled_dt else ""
+                minutes = _minutes_away(now, scheduled_dt) if scheduled_dt else minutes
+                sort_time = scheduled_dt or dep_time
             else:
                 clock_time = ""
+                sort_time = dep_time
+
             trips.append(
-                TripRow(
-                    minutes_away=0,
-                    clock_time=clock_time,
-                    reliability="UNKNOWN",
-                    cancelled=True,
+                (
+                    sort_time,
+                    TripRow(
+                        minutes_away=minutes,
+                        clock_time=clock_time,
+                        reliability="UNKNOWN",
+                        cancelled=True,
+                    ),
                 )
             )
-            if len(trips) >= 6:
-                break
             continue
-        time_raw = attrs.get("arrival_time") or attrs.get("departure_time")
-        if not time_raw:
-            continue
-        parsed = _parse_time(time_raw)
-        if not parsed:
-            continue
-        minutes = _minutes_away(now, parsed)
+
+        assessment = score_trip(pred, vehicles_by_id, minutes)
         minutes_debug.append(str(minutes))
-        assessment = assess_reliability(pred, result.vehicles)
-        vehicle_id = (
-            pred.get("relationships", {})
-            .get("vehicle", {})
-            .get("data", {})
-            .get("id")
-        )
-        committed = False
+
+        vehicle_id = rels.get("vehicle", {}).get("data", {}).get("id")
+        departed = False
         if vehicle_id:
-            vehicles_by_id = {v.get("id"): v for v in result.vehicles if isinstance(v, dict)}
             vehicle = vehicles_by_id.get(vehicle_id)
             if vehicle:
                 attrs_v = vehicle.get("attributes", {})
                 direction_id = attrs_v.get("direction_id")
                 seq = attrs_v.get("current_stop_sequence")
                 if direction_id == 1 and isinstance(seq, int) and 1 < seq <= 10:
-                    committed = True
+                    departed = True
+
         trips.append(
-            TripRow(
-                minutes_away=minutes,
-                clock_time=_format_clock(parsed),
-                reliability=assessment.classification,
-                committed=committed,
+            (
+                dep_time,
+                TripRow(
+                    minutes_away=minutes,
+                    clock_time=_format_clock(dep_time),
+                    reliability=assessment.classification,
+                    departed=departed,
+                ),
             )
         )
-        if len(trips) >= 6:
-            break
 
-    data = FrameData(trips=trips, ticker_text="")
+    if len(trips) < 6 and schedule_map:
+        for trip_id, dep_raw in schedule_map.items():
+            if trip_id in seen_trip_ids:
+                continue
+            dep_time = _parse_time(dep_raw)
+            if not dep_time or dep_time < now:
+                continue
+            minutes = _minutes_away(now, dep_time)
+            if minutes > 90:
+                continue
+            assessment = score_trip(None, {}, minutes)
+            trips.append(
+                (
+                    dep_time,
+                    TripRow(
+                        minutes_away=minutes,
+                        clock_time=_format_clock(dep_time),
+                        reliability=assessment.classification,
+                        scheduled_only=True,
+                    ),
+                )
+            )
+            if len(trips) >= 6:
+                break
+
+    trips_sorted = sorted(trips, key=lambda t: t[0])[:6]
+    data = FrameData(trips=[trip for _, trip in trips_sorted], ticker_text="")
     return data, minutes_debug
 
 

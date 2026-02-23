@@ -24,8 +24,6 @@ class ReliabilityAssessment:
 
 def assess_reliability(prediction: dict, vehicles: list[dict]) -> ReliabilityAssessment:
     """Assess reliability for a single prediction using vehicle data."""
-    now = time.time()
-
     attributes = prediction.get("attributes", {})
     if attributes.get("schedule_relationship") == "CANCELLED":
         return ReliabilityAssessment(UNKNOWN, "No active predictions")
@@ -47,6 +45,41 @@ def assess_reliability(prediction: dict, vehicles: list[dict]) -> ReliabilityAss
         return ReliabilityAssessment(RISKY, "Vehicle has no update timestamp")
 
     return ReliabilityAssessment(GOOD, "Vehicle assigned with recent data")
+
+
+def score_trip(
+    prediction: dict | None,
+    vehicles: dict[str, dict],
+    minutes_until: int,
+) -> ReliabilityAssessment:
+    """Score a trip based on prediction/vehicle state and minutes until departure."""
+    if prediction is None:
+        if minutes_until > 20:
+            return ReliabilityAssessment(UNKNOWN, "Scheduled")
+        if 10 <= minutes_until <= 20:
+            return ReliabilityAssessment(RISKY, "Scheduled soon")
+        return ReliabilityAssessment(BAD, "Scheduled imminent")
+
+    attributes = prediction.get("attributes", {})
+    if attributes.get("schedule_relationship") == "CANCELLED":
+        return ReliabilityAssessment(UNKNOWN, "Cancelled")
+
+    relationships = prediction.get("relationships", {})
+    vehicle_rel = relationships.get("vehicle", {}).get("data")
+    vehicle_id = vehicle_rel.get("id") if isinstance(vehicle_rel, dict) else None
+
+    if not vehicle_id:
+        if minutes_until > 20:
+            return ReliabilityAssessment(UNKNOWN, "Unassigned")
+        if 10 <= minutes_until <= 20:
+            return ReliabilityAssessment(RISKY, "Unassigned soon")
+        return ReliabilityAssessment(BAD, "Unassigned imminent")
+
+    vehicle = vehicles.get(vehicle_id)
+    if not vehicle:
+        return ReliabilityAssessment(RISKY, "Assigned vehicle missing")
+
+    return ReliabilityAssessment(GOOD, "Vehicle assigned")
 
 
 def assess_poll(result: PollResult) -> ReliabilityAssessment:
@@ -79,4 +112,5 @@ __all__ = [
     "ReliabilityAssessment",
     "assess_reliability",
     "assess_poll",
+    "score_trip",
 ]
