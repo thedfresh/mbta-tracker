@@ -102,9 +102,10 @@ def estimate_time_to_linden(vehicle: dict) -> float | None:
     if direction_id is None or seq is None or not isinstance(seq, int):
         return None
 
+    if seq == 1:
+        return 0.0
+
     if direction_id == 1:
-        if seq <= 1:
-            return 0.0
         remaining_inbound = max(INBOUND_END_SEQ - seq, 0) / INBOUND_END_SEQ * INBOUND_DURATION_MIN
         return remaining_inbound + OUTBOUND_DURATION_MIN
 

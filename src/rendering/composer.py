@@ -128,13 +128,14 @@ def _draw_trip_cell(draw: ImageDraw.ImageDraw, index: int, trip: TripRow | None)
         )
         return
 
-    dot_color = _dot_color(trip.reliability, trip.trend)
+    dot_color = COLOR_GOOD if trip.departed else _dot_color(trip.reliability, trip.trend)
     minutes_text = f"{trip.minutes_away}m"
     minutes_bbox = draw.textbbox((0, 0), minutes_text, font=FONT_MINUTES)
     minutes_width = minutes_bbox[2] - minutes_bbox[0]
     minutes_height = minutes_bbox[3] - minutes_bbox[1]
     minutes_y = cell_top + (CELL_HEIGHT - minutes_height) // 2
     minutes_x = cell_left + TEXT_LEFT_X
+    minutes_color = COLOR_GOOD if trip.departed else COLOR_TEXT
 
     clock_text = trip.clock_time
     clock_bbox = draw.textbbox((0, 0), clock_text, font=FONT_CLOCK)
@@ -144,7 +145,7 @@ def _draw_trip_cell(draw: ImageDraw.ImageDraw, index: int, trip: TripRow | None)
     clock_color = COLOR_CLOCK_COMMITTED if trip.departed else COLOR_CLOCK
 
     draw.ellipse([dot_left, dot_top, dot_right, dot_bottom], fill=dot_color)
-    draw.text((minutes_x, minutes_y), minutes_text, font=FONT_MINUTES, fill=COLOR_TEXT)
+    draw.text((minutes_x, minutes_y), minutes_text, font=FONT_MINUTES, fill=minutes_color)
     draw.text((clock_x, clock_y), clock_text, font=FONT_CLOCK, fill=clock_color)
 
 
