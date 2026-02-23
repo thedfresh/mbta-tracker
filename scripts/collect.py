@@ -9,8 +9,12 @@ from datetime import datetime, timezone
 from typing import Any
 
 from dotenv import load_dotenv
+import requests
 
 from src.data.collector_client import (
+    DIRECTION_ID,
+    MBTA_API_BASE,
+    ROUTE_ID,
     CollectorSnapshot,
     fetch_schedules,
     fetch_snapshot,
@@ -21,6 +25,12 @@ SCHEDULE_SNAPSHOT_INTERVAL_SECONDS = 3600
 
 LOG_PATH = "logs/route109_inbound.jsonl"
 SCHEDULE_LOG_PATH = "logs/schedule_snapshots.jsonl"
+
+TRANSFER_STOPS = {
+    "sullivan": "29004",
+    "union_sq": "2612",
+    "harvard": "22549",
+}
 
 
 def _utc_now_iso() -> str:
@@ -39,6 +49,24 @@ def _load_config() -> dict[str, Any]:
 def _write_jsonl(path: str, record: dict[str, Any]) -> None:
     with open(path, "a", encoding="utf-8") as handle:
         handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
+def _get(path: str, params: dict[str, Any], api_key: str) -> dict[str, Any]:
+    url = f"{MBTA_API_BASE}{path}"
+    resp = requests.get(url, params=params, headers={"x-api-key": api_key}, timeout=10)
+    if resp.status_code != 200:
+        raise RuntimeError(f"HTTP {resp.status_code}: {resp.text}")
+    return resp.json()
+
+
+def _fetch_transfer_predictions(api_key: str, stop_id: str) -> list[dict[str, Any]]:
+    params = {
+        "filter[route]": ROUTE_ID,
+        "filter[stop]": stop_id,
+        "filter[direction_id]": DIRECTION_ID,
+    }
+    data = _get("/predictions", params=params, api_key=api_key)
+    return data.get("data", []) or []
 
 
 def _prediction_record(pred: dict[str, Any]) -> dict[str, Any]:
@@ -90,11 +118,16 @@ def _schedule_record(schedule: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _log_snapshot(snapshot: CollectorSnapshot, timestamp: str) -> None:
+def _log_snapshot(
+    snapshot: CollectorSnapshot,
+    timestamp: str,
+    transfer_data: dict[str, dict[str, Any]],
+) -> None:
     record = {
         "timestamp": timestamp,
         "boarding": {"predictions": [_prediction_record(p) for p in snapshot.boarding_predictions]},
         "terminal": {"predictions": [_terminal_prediction_record(p) for p in snapshot.terminal_predictions]},
+        "transfers": transfer_data,
         "fleet": [_vehicle_record(v) for v in snapshot.vehicles],
         "error": None,
     }
@@ -122,15 +155,29 @@ def main() -> int:
         timestamp = _utc_now_iso()
         error = None
 
+        transfer_data: dict[str, dict[str, Any]] = {}
+        for key, stop_id in TRANSFER_STOPS.items():
+            transfer_data[key] = {
+                "stop_id": stop_id,
+                "predictions": [],
+                "error": None,
+            }
+            try:
+                raw = _fetch_transfer_predictions(api_key, stop_id)
+                transfer_data[key]["predictions"] = [_prediction_record(p) for p in raw]
+            except Exception as exc:
+                transfer_data[key]["error"] = str(exc)
+
         try:
             snapshot = fetch_snapshot(api_key)
-            _log_snapshot(snapshot, timestamp)
+            _log_snapshot(snapshot, timestamp, transfer_data)
         except Exception as exc:
             error = str(exc)
             record = {
                 "timestamp": timestamp,
                 "boarding": {"predictions": []},
                 "terminal": {"predictions": []},
+                "transfers": transfer_data,
                 "fleet": [],
                 "error": error,
             }
