@@ -124,7 +124,10 @@ def _vehicle_record(vehicle: dict[str, Any]) -> dict[str, Any]:
 
 def _schedule_record(schedule: dict[str, Any]) -> dict[str, Any]:
     attrs = schedule.get("attributes", {})
+    rels = schedule.get("relationships", {})
+    trip = rels.get("trip", {}).get("data")
     return {
+        "trip_id": trip.get("id") if isinstance(trip, dict) else None,
         "departure_time": attrs.get("departure_time"),
         "stop_sequence": attrs.get("stop_sequence"),
     }
