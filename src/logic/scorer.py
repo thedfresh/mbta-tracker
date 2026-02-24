@@ -220,6 +220,8 @@ def estimate_time_to_linden(vehicle: dict) -> float | None:
 
 def score_feasibility(time_needed: float, time_available: int) -> ReliabilityAssessment:
     """Score feasibility using time needed vs time available."""
+    if time_needed <= 0:
+        return ReliabilityAssessment(GOOD, "At Linden")
     if time_needed <= time_available - FEASIBILITY_GOOD_BUFFER_MIN:
         return ReliabilityAssessment(GOOD, "Feasible")
     if time_needed <= time_available + FEASIBILITY_RISKY_BUFFER_MIN:
