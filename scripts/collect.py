@@ -119,6 +119,10 @@ def _vehicle_record(vehicle: dict[str, Any]) -> dict[str, Any]:
         "current_stop_sequence": attrs.get("current_stop_sequence"),
         "current_status": attrs.get("current_status"),
         "updated_at": attrs.get("updated_at"),
+        "latitude": attrs.get("latitude"),
+        "longitude": attrs.get("longitude"),
+        "bearing": attrs.get("bearing"),
+        "speed": attrs.get("speed"),
     }
 
 

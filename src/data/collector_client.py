@@ -15,7 +15,9 @@ DIRECTION_ID = 1
 
 PREDICTION_FIELDS_BOARDING = "departure_time,arrival_time,stop_sequence,schedule_relationship"
 PREDICTION_FIELDS_TERMINAL = "departure_time,schedule_relationship,stop_sequence"
-VEHICLE_FIELDS = "current_stop_sequence,current_status,direction_id,updated_at"
+VEHICLE_FIELDS = (
+    "current_stop_sequence,current_status,direction_id,updated_at,latitude,longitude,bearing,speed"
+)
 SCHEDULE_FIELDS = "departure_time,stop_sequence"
 
 
