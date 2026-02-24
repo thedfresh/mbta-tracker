@@ -155,6 +155,26 @@ def score_trip(
         )
         return assessment
 
+    attrs_v = vehicle.get("attributes", {}) if isinstance(vehicle, dict) else {}
+    direction_id = attrs_v.get("direction_id")
+    seq = attrs_v.get("current_stop_sequence")
+    if direction_id == 1 and isinstance(seq, int) and 1 < seq <= 10:
+        assessment = ReliabilityAssessment(GOOD, "Departed")
+        print(
+            "score_trip",
+            {
+                "trip_id": trip_id,
+                "vehicle_id": vehicle_id,
+                "direction_id": direction_id,
+                "current_stop_sequence": seq,
+                "time_needed": 0.0,
+                "minutes_until": round(minutes_until, 2),
+                "score": assessment.classification,
+            },
+            flush=True,
+        )
+        return assessment
+
     time_needed = estimate_time_to_linden(vehicle)
     if time_needed is None:
         assessment = ReliabilityAssessment(RISKY, "Vehicle missing position")
