@@ -95,6 +95,8 @@ def _build_frame_data(
         trip_rel = rels.get("trip") or {}
         trip_data = trip_rel.get("data") or {}
         trip_id = trip_data.get("id")
+        if not trip_id:
+            continue
         schedule_relationship = attrs.get("schedule_relationship")
 
         dep_raw = attrs.get("arrival_time") or attrs.get("departure_time")
