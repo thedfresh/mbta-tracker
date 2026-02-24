@@ -20,6 +20,7 @@ from src.display import MatrixDisplay, MatrixGeometry
 from src.data.poller import PollResult
 from src.logic.scorer import estimate_time_to_linden, score_trip
 from src.rendering import FrameData, TripRow, compose_frame, save_frame
+from PIL import Image
 
 FRAME_PATH = Path("emulator_output/frame.png")
 SCHEDULE_SNAPSHOT_PATH = Path("logs/schedule_snapshots.jsonl")
@@ -321,6 +322,22 @@ def main() -> int:
         default=None,
         help="Override brightness percent (0-100).",
     )
+    parser.add_argument(
+        "--rotate",
+        choices=["0", "180"],
+        default="0",
+        help="Rotate output frame before sending to hardware/emulator.",
+    )
+    parser.add_argument(
+        "--flip-x",
+        action="store_true",
+        help="Mirror output frame horizontally.",
+    )
+    parser.add_argument(
+        "--flip-y",
+        action="store_true",
+        help="Mirror output frame vertically.",
+    )
     args = parser.parse_args()
 
     config = load_config()
@@ -379,6 +396,12 @@ def main() -> int:
                 frame_data, minutes_debug, drift_cache = _build_frame_data(result, drift_cache)
                 reliability = frame_data.trips[0].reliability if frame_data.trips else "NONE"
                 image = compose_frame(frame_data, width=config.display.width, height=config.display.height)
+                if args.rotate == "180":
+                    image = image.transpose(Image.Transpose.ROTATE_180)
+                if args.flip_x:
+                    image = image.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+                if args.flip_y:
+                    image = image.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
                 if output_emulator:
                     save_frame(image, str(FRAME_PATH))
                 if matrix is not None:

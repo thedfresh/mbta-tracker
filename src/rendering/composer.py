@@ -72,6 +72,8 @@ FONT_MINUTES = ImageFont.truetype(str(FONT_BOLD), 10)
 FONT_CLOCK = ImageFont.truetype(str(FONT_REGULAR), 7)
 FONT_CANCELLED = ImageFont.truetype(str(FONT_REGULAR), 8)
 FONT_STATION = ImageFont.truetype(str(FONT_BOLD), 10)
+FONT_MINUTES_LARGE = ImageFont.truetype(str(FONT_BOLD), 18)
+FONT_CLOCK_LARGE = ImageFont.truetype(str(FONT_REGULAR), 11)
 
 
 def _dot_color(reliability: str, trend: str) -> tuple[int, int, int]:
@@ -99,10 +101,15 @@ def _draw_trip_cell(
     cell_left = col * cell_width
     cell_top = row * cell_height
 
-    dot_top = cell_top + (cell_height - DOT_DIAMETER) // 2
+    large_mode = cell_height >= 40
+    dot_diameter = 8 if large_mode else DOT_DIAMETER
+    dot_top = cell_top + (cell_height - dot_diameter) // 2
     dot_left = cell_left + DOT_LEFT_MARGIN
-    dot_right = dot_left + DOT_DIAMETER - 1
-    dot_bottom = dot_top + DOT_DIAMETER - 1
+    dot_right = dot_left + dot_diameter - 1
+    dot_bottom = dot_top + dot_diameter - 1
+    text_left_x = 18 if large_mode else TEXT_LEFT_X
+    minutes_font = FONT_MINUTES_LARGE if large_mode else FONT_MINUTES
+    clock_font = FONT_CLOCK_LARGE if large_mode else FONT_CLOCK
 
     if trip is None:
         dot_color = COLOR_PLACEHOLDER_DOT
@@ -113,7 +120,7 @@ def _draw_trip_cell(
         text_height = bbox[3] - bbox[1]
         text_y = cell_top + (cell_height - text_height) // 2
         draw.ellipse([dot_left, dot_top, dot_right, dot_bottom], fill=dot_color)
-        draw.text((cell_left + TEXT_LEFT_X, text_y), text, font=text_font, fill=text_color)
+        draw.text((cell_left + text_left_x, text_y), text, font=text_font, fill=text_color)
         return
 
     if trip.cancelled:
@@ -123,7 +130,7 @@ def _draw_trip_cell(
         bbox = draw.textbbox((0, 0), text, font=FONT_CANCELLED)
         text_width = bbox[2] - bbox[0]
         text_height = bbox[3] - bbox[1]
-        text_x = cell_left + TEXT_LEFT_X
+        text_x = cell_left + text_left_x
         text_y = cell_top + (cell_height - text_height) // 2
         draw.ellipse([dot_left, dot_top, dot_right, dot_bottom], fill=dot_color)
         draw.text((text_x, text_y), text, font=FONT_CANCELLED, fill=text_color)
@@ -137,23 +144,23 @@ def _draw_trip_cell(
 
     dot_color = COLOR_GOOD if trip.departed else _dot_color(trip.reliability, trip.trend)
     minutes_text = "NOW" if trip.minutes_away < 1.0 else f"{round(trip.minutes_away)}m"
-    minutes_bbox = draw.textbbox((0, 0), minutes_text, font=FONT_MINUTES)
+    minutes_bbox = draw.textbbox((0, 0), minutes_text, font=minutes_font)
     minutes_width = minutes_bbox[2] - minutes_bbox[0]
     minutes_height = minutes_bbox[3] - minutes_bbox[1]
     minutes_y = cell_top + (cell_height - minutes_height) // 2
-    minutes_x = cell_left + TEXT_LEFT_X
+    minutes_x = cell_left + text_left_x
     minutes_color = COLOR_GOOD if trip.departed else COLOR_TEXT
 
     clock_text = trip.clock_time
-    clock_bbox = draw.textbbox((0, 0), clock_text, font=FONT_CLOCK)
+    clock_bbox = draw.textbbox((0, 0), clock_text, font=clock_font)
     clock_height = clock_bbox[3] - clock_bbox[1]
     clock_x = minutes_x + minutes_width + TEXT_GAP
     clock_y = cell_top + (cell_height - clock_height) // 2
     clock_color = COLOR_CLOCK_COMMITTED if trip.departed else COLOR_CLOCK
 
     draw.ellipse([dot_left, dot_top, dot_right, dot_bottom], fill=dot_color)
-    draw.text((minutes_x, minutes_y), minutes_text, font=FONT_MINUTES, fill=minutes_color)
-    draw.text((clock_x, clock_y), clock_text, font=FONT_CLOCK, fill=clock_color)
+    draw.text((minutes_x, minutes_y), minutes_text, font=minutes_font, fill=minutes_color)
+    draw.text((clock_x, clock_y), clock_text, font=clock_font, fill=clock_color)
 
 
 def compose_frame(data: FrameData, width: int = DISPLAY_WIDTH, height: int = DISPLAY_HEIGHT) -> Image.Image:
