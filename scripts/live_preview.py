@@ -208,7 +208,9 @@ def _build_frame_data(
             minutes = _minutes_away(now, dep_time)
             if minutes > 90:
                 continue
-            assessment = score_trip(None, {}, minutes)
+            assessment = score_trip(
+                {"relationships": {"trip": {"data": {"id": trip_id}}}}, {}, minutes
+            )
             trips.append(
                 (
                     dep_time,
