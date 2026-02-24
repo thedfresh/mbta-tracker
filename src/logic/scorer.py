@@ -58,40 +58,142 @@ def assess_reliability(prediction: dict, vehicles: list[dict]) -> ReliabilityAss
 def score_trip(
     prediction: dict | None,
     vehicles: dict[str, dict],
-    minutes_until: int,
+    minutes_until: float,
 ) -> ReliabilityAssessment:
     """Score a trip based on prediction/vehicle state and minutes until departure."""
+    trip_id = None
+    vehicle_id = None
+    direction_id = None
+    seq = None
+    time_needed = None
+
     if prediction is None:
         if minutes_until > 20:
-            return ReliabilityAssessment(UNKNOWN, "Scheduled")
-        if 10 <= minutes_until <= 20:
-            return ReliabilityAssessment(RISKY, "Scheduled soon")
-        return ReliabilityAssessment(BAD, "Scheduled imminent")
+            assessment = ReliabilityAssessment(UNKNOWN, "Scheduled")
+        elif 10 <= minutes_until <= 20:
+            assessment = ReliabilityAssessment(RISKY, "Scheduled soon")
+        else:
+            assessment = ReliabilityAssessment(BAD, "Scheduled imminent")
+        print(
+            "score_trip",
+            {
+                "trip_id": trip_id,
+                "vehicle_id": vehicle_id,
+                "direction_id": direction_id,
+                "current_stop_sequence": seq,
+                "time_needed": time_needed,
+                "minutes_until": round(minutes_until, 2),
+                "score": assessment.classification,
+            },
+            flush=True,
+        )
+        return assessment
 
     attributes = prediction.get("attributes", {})
     if attributes.get("schedule_relationship") == "CANCELLED":
-        return ReliabilityAssessment(UNKNOWN, "Cancelled")
+        assessment = ReliabilityAssessment(UNKNOWN, "Cancelled")
+        print(
+            "score_trip",
+            {
+                "trip_id": trip_id,
+                "vehicle_id": vehicle_id,
+                "direction_id": direction_id,
+                "current_stop_sequence": seq,
+                "time_needed": time_needed,
+                "minutes_until": round(minutes_until, 2),
+                "score": assessment.classification,
+            },
+            flush=True,
+        )
+        return assessment
 
     relationships = prediction.get("relationships", {})
+    trip_rel = relationships.get("trip") or {}
+    trip_data = trip_rel.get("data") or {}
+    trip_id = trip_data.get("id")
+
     vehicle_rel = relationships.get("vehicle", {}).get("data")
     vehicle_id = vehicle_rel.get("id") if isinstance(vehicle_rel, dict) else None
 
     if not vehicle_id:
         if minutes_until > 20:
-            return ReliabilityAssessment(UNKNOWN, "Unassigned")
-        if 10 <= minutes_until <= 20:
-            return ReliabilityAssessment(RISKY, "Unassigned soon")
-        return ReliabilityAssessment(BAD, "Unassigned imminent")
+            assessment = ReliabilityAssessment(UNKNOWN, "Unassigned")
+        elif 10 <= minutes_until <= 20:
+            assessment = ReliabilityAssessment(RISKY, "Unassigned soon")
+        else:
+            assessment = ReliabilityAssessment(BAD, "Unassigned imminent")
+        print(
+            "score_trip",
+            {
+                "trip_id": trip_id,
+                "vehicle_id": vehicle_id,
+                "direction_id": direction_id,
+                "current_stop_sequence": seq,
+                "time_needed": time_needed,
+                "minutes_until": round(minutes_until, 2),
+                "score": assessment.classification,
+            },
+            flush=True,
+        )
+        return assessment
 
     vehicle = vehicles.get(vehicle_id)
     if not vehicle:
-        return ReliabilityAssessment(RISKY, "Assigned vehicle missing")
+        assessment = ReliabilityAssessment(RISKY, "Assigned vehicle missing")
+        print(
+            "score_trip",
+            {
+                "trip_id": trip_id,
+                "vehicle_id": vehicle_id,
+                "direction_id": direction_id,
+                "current_stop_sequence": seq,
+                "time_needed": time_needed,
+                "minutes_until": round(minutes_until, 2),
+                "score": assessment.classification,
+            },
+            flush=True,
+        )
+        return assessment
 
     time_needed = estimate_time_to_linden(vehicle)
     if time_needed is None:
-        return ReliabilityAssessment(RISKY, "Vehicle missing position")
+        assessment = ReliabilityAssessment(RISKY, "Vehicle missing position")
+        attrs_v = vehicle.get("attributes", {}) if isinstance(vehicle, dict) else {}
+        direction_id = attrs_v.get("direction_id")
+        seq = attrs_v.get("current_stop_sequence")
+        print(
+            "score_trip",
+            {
+                "trip_id": trip_id,
+                "vehicle_id": vehicle_id,
+                "direction_id": direction_id,
+                "current_stop_sequence": seq,
+                "time_needed": time_needed,
+                "minutes_until": round(minutes_until, 2),
+                "score": assessment.classification,
+            },
+            flush=True,
+        )
+        return assessment
 
-    return score_feasibility(time_needed, minutes_until)
+    assessment = score_feasibility(time_needed, minutes_until)
+    attrs_v = vehicle.get("attributes", {}) if isinstance(vehicle, dict) else {}
+    direction_id = attrs_v.get("direction_id")
+    seq = attrs_v.get("current_stop_sequence")
+    print(
+        "score_trip",
+        {
+            "trip_id": trip_id,
+            "vehicle_id": vehicle_id,
+            "direction_id": direction_id,
+            "current_stop_sequence": seq,
+            "time_needed": round(time_needed, 2) if time_needed is not None else None,
+            "minutes_until": round(minutes_until, 2),
+            "score": assessment.classification,
+        },
+        flush=True,
+    )
+    return assessment
 
 
 def estimate_time_to_linden(vehicle: dict) -> float | None:

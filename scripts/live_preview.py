@@ -141,7 +141,7 @@ def _build_frame_data(
         vehicle_rel = rels.get("vehicle") or {}
         vehicle_data = vehicle_rel.get("data") or {}
         vehicle_id = vehicle_data.get("id")
-        departed = False
+        departed = minutes <= 0.5
         trend = "stable"
         time_needed = None
         if vehicle_id:
