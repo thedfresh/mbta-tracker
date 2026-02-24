@@ -281,10 +281,13 @@ def main() -> int:
 
     try:
         drift_cache: dict[str, float] = {}
+        poll_interval_fast = 5
+        poll_interval_slow = 10
         while True:
             timestamp = datetime.now(timezone.utc).isoformat()
             minutes_debug: list[str] = []
             reliability = "NONE"
+            next_sleep = poll_interval_slow
 
             try:
                 snapshot = fetch_snapshot(api_key)
@@ -298,6 +301,8 @@ def main() -> int:
                 reliability = frame_data.trips[0].reliability if frame_data.trips else "NONE"
                 image = compose_frame(frame_data)
                 save_frame(image, str(FRAME_PATH))
+                if any(trip.minutes_away <= 15 for trip in frame_data.trips):
+                    next_sleep = poll_interval_fast
             except Exception as exc:
                 print("preview_error", str(exc), flush=True)
 
@@ -311,7 +316,7 @@ def main() -> int:
                 flush=True,
             )
 
-            time.sleep(config.mbta.poll_interval_seconds)
+            time.sleep(next_sleep)
     except KeyboardInterrupt:
         return 0
 
