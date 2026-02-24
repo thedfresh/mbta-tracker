@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import threading
 import time
@@ -12,6 +13,7 @@ from typing import Any
 
 from src.config import load_config
 from src.data.collector_client import fetch_snapshot
+from src.display import MatrixDisplay, MatrixGeometry
 from src.data.poller import PollResult
 from src.logic.scorer import estimate_time_to_linden, score_trip
 from src.rendering import FrameData, TripRow, compose_frame, save_frame
@@ -286,11 +288,42 @@ def _run_server() -> None:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--output",
+        choices=["emulator", "hardware", "both"],
+        default="both",
+        help="Frame output target",
+    )
+    parser.add_argument(
+        "--no-server",
+        action="store_true",
+        help="Disable preview web server",
+    )
+    args = parser.parse_args()
+
     config = load_config()
     api_key = config.mbta.api_key
 
-    server_thread = threading.Thread(target=_run_server, daemon=True)
-    server_thread.start()
+    output_emulator = args.output in {"emulator", "both"}
+    output_hardware = args.output in {"hardware", "both"}
+
+    if output_hardware:
+        matrix = MatrixDisplay(
+            MatrixGeometry(
+                width=config.display.width,
+                height=config.display.height,
+                panel_height=config.display.height,
+            ),
+            brightness=config.display.brightness,
+        )
+        print("hardware_display_ready", {"panels": matrix.panel_count}, flush=True)
+    else:
+        matrix = None
+
+    if not args.no_server:
+        server_thread = threading.Thread(target=_run_server, daemon=True)
+        server_thread.start()
 
     try:
         drift_cache: dict[str, float] = {}
@@ -313,7 +346,10 @@ def main() -> int:
                 frame_data, minutes_debug, drift_cache = _build_frame_data(result, drift_cache)
                 reliability = frame_data.trips[0].reliability if frame_data.trips else "NONE"
                 image = compose_frame(frame_data)
-                save_frame(image, str(FRAME_PATH))
+                if output_emulator:
+                    save_frame(image, str(FRAME_PATH))
+                if matrix is not None:
+                    matrix.render(image)
                 if any(trip.minutes_away <= 15 for trip in frame_data.trips):
                     next_sleep = poll_interval_fast
             except Exception as exc:

@@ -31,3 +31,18 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
+
+## Display Output
+- Chain size is taken from `config/config.yaml` (`display.width` / 64).
+- Test panel wiring/colors on hardware:
+```bash
+python scripts/panel_test.py --width 192 --height 64
+```
+- Run live app output:
+```bash
+python scripts/live_preview.py --output both
+```
+- Output modes:
+  - `--output emulator` writes `emulator_output/frame.png`
+  - `--output hardware` writes only to the LED matrix
+  - `--output both` writes to both targets
