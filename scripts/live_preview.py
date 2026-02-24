@@ -303,6 +303,24 @@ def main() -> int:
         action="store_true",
         help="Disable preview web server",
     )
+    parser.add_argument(
+        "--panel-height",
+        type=int,
+        default=None,
+        help="Physical panel height (e.g. 32 or 64). Defaults to display.height.",
+    )
+    parser.add_argument(
+        "--n-addr-lines",
+        type=int,
+        default=None,
+        help="Override address lines (32px panels=4, 64px panels=5).",
+    )
+    parser.add_argument(
+        "--brightness",
+        type=int,
+        default=None,
+        help="Override brightness percent (0-100).",
+    )
     args = parser.parse_args()
 
     config = load_config()
@@ -312,15 +330,27 @@ def main() -> int:
     output_hardware = args.output in {"hardware", "both"}
 
     if output_hardware:
+        panel_height = args.panel_height if args.panel_height is not None else config.display.height
+        brightness = args.brightness if args.brightness is not None else config.display.brightness
         matrix = MatrixDisplay(
             MatrixGeometry(
                 width=config.display.width,
                 height=config.display.height,
-                panel_height=config.display.height,
+                panel_height=panel_height,
+                n_addr_lines=args.n_addr_lines,
             ),
-            brightness=config.display.brightness,
+            brightness=brightness,
         )
-        print("hardware_display_ready", {"panels": matrix.panel_count}, flush=True)
+        print(
+            "hardware_display_ready",
+            {
+                "panels": matrix.panel_count,
+                "panel_height": panel_height,
+                "n_addr_lines": args.n_addr_lines,
+                "brightness": brightness,
+            },
+            flush=True,
+        )
     else:
         matrix = None
 
