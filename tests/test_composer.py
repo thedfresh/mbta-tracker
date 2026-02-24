@@ -175,10 +175,8 @@ def test_compose_frame_two_panel_layout() -> None:
     pixels = image.load()
 
     assert image.size == (128, 64)
-    assert pixels[_dot_center_cols(0, 2)] == COLOR_GOOD
-    assert pixels[_dot_center_cols(1, 2)] == COLOR_RISKY
-    assert pixels[_dot_center_cols(2, 2)] == COLOR_BAD
-    assert pixels[_dot_center_cols(3, 2)] == COLOR_UNKNOWN
+    assert pixels[DOT_CENTER_OFFSET, 24] == COLOR_GOOD
+    assert pixels[64 + DOT_CENTER_OFFSET, 24] == COLOR_RISKY
 
     y = 56
     assert pixels[1, y] == STATION_SULLIVAN

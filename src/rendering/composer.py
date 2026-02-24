@@ -166,8 +166,13 @@ def compose_frame(data: FrameData, width: int = DISPLAY_WIDTH, height: int = DIS
         )
 
     grid_cols = width // PANEL_WIDTH
-    grid_rows = 2 if height == DISPLAY_HEIGHT else 1
-    cell_height = 24 if grid_rows == 2 else height
+    # For 2x64x64 setup, favor readability over density: one large row (2 trips).
+    if width == 128 and height == DISPLAY_HEIGHT:
+        grid_rows = 1
+        cell_height = 48
+    else:
+        grid_rows = 2 if height == DISPLAY_HEIGHT else 1
+        cell_height = 24 if grid_rows == 2 else height
     trip_zone_height = grid_rows * cell_height
     image = Image.new("RGB", (width, height), (0, 0, 0))
     draw = ImageDraw.Draw(image)
