@@ -108,6 +108,8 @@ def _build_frame_data(
         if trip_id:
             seen_trip_ids.add(trip_id)
 
+        assessment = score_trip(pred, vehicles_by_id, minutes)
+
         if schedule_relationship == "CANCELLED":
             scheduled_time = schedule_map.get(trip_id) if trip_id else None
             if scheduled_time:
@@ -135,7 +137,6 @@ def _build_frame_data(
             )
             continue
 
-        assessment = score_trip(pred, vehicles_by_id, minutes)
         minutes_debug.append(f"{minutes:.1f}")
 
         vehicle_rel = rels.get("vehicle") or {}
