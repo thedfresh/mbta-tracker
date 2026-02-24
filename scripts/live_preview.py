@@ -194,6 +194,8 @@ def _build_frame_data(
 
     if len(trips) < 6 and schedule_map:
         for trip_id, dep_raw in schedule_map.items():
+            if not trip_id:
+                continue
             if trip_id in seen_trip_ids:
                 continue
             dep_time = _parse_time(dep_raw)
