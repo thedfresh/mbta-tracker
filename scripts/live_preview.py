@@ -68,7 +68,9 @@ def _load_boarding_schedule_map() -> dict[str, str]:
     for sched in schedules:
         trip_id = sched.get("trip_id")
         departure_time = sched.get("departure_time")
-        if trip_id and departure_time:
+        if not trip_id:
+            continue
+        if departure_time:
             schedule_map[trip_id] = departure_time
     return schedule_map
 
