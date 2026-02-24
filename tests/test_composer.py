@@ -183,3 +183,19 @@ def test_compose_frame_two_panel_layout() -> None:
     y = 56
     assert pixels[1, y] == STATION_SULLIVAN
     assert pixels[65, y] == STATION_UNION
+
+
+def test_compose_frame_32px_layout() -> None:
+    data = FrameData(
+        trips=[
+            TripRow(1, "12:00", GOOD),
+            TripRow(2, "12:02", RISKY),
+        ],
+        ticker_text="",
+    )
+    image = compose_frame(data, width=128, height=32)
+    pixels = image.load()
+
+    assert image.size == (128, 32)
+    assert pixels[DOT_CENTER_OFFSET, 16] == COLOR_GOOD
+    assert pixels[64 + DOT_CENTER_OFFSET, 16] == COLOR_RISKY

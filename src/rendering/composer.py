@@ -13,6 +13,7 @@ PANEL_WIDTH = 64
 TOTAL_PANELS = 3
 DISPLAY_WIDTH = PANEL_WIDTH * TOTAL_PANELS
 DISPLAY_HEIGHT = 64
+DISPLAY_HEIGHT_SMALL = 32
 
 GRID_COLS = 3
 GRID_ROWS = 2
@@ -86,14 +87,19 @@ def _dot_color(reliability: str, trend: str) -> tuple[int, int, int]:
 
 
 def _draw_trip_cell(
-    draw: ImageDraw.ImageDraw, index: int, trip: TripRow | None, grid_cols: int, cell_width: int
+    draw: ImageDraw.ImageDraw,
+    index: int,
+    trip: TripRow | None,
+    grid_cols: int,
+    cell_width: int,
+    cell_height: int,
 ) -> None:
     col = index % grid_cols
     row = index // grid_cols
     cell_left = col * cell_width
-    cell_top = row * CELL_HEIGHT
+    cell_top = row * cell_height
 
-    dot_top = cell_top + (CELL_HEIGHT - DOT_DIAMETER) // 2
+    dot_top = cell_top + (cell_height - DOT_DIAMETER) // 2
     dot_left = cell_left + DOT_LEFT_MARGIN
     dot_right = dot_left + DOT_DIAMETER - 1
     dot_bottom = dot_top + DOT_DIAMETER - 1
@@ -105,7 +111,7 @@ def _draw_trip_cell(
         text_font = FONT_CANCELLED
         bbox = draw.textbbox((0, 0), text, font=text_font)
         text_height = bbox[3] - bbox[1]
-        text_y = cell_top + (CELL_HEIGHT - text_height) // 2
+        text_y = cell_top + (cell_height - text_height) // 2
         draw.ellipse([dot_left, dot_top, dot_right, dot_bottom], fill=dot_color)
         draw.text((cell_left + TEXT_LEFT_X, text_y), text, font=text_font, fill=text_color)
         return
@@ -118,7 +124,7 @@ def _draw_trip_cell(
         text_width = bbox[2] - bbox[0]
         text_height = bbox[3] - bbox[1]
         text_x = cell_left + TEXT_LEFT_X
-        text_y = cell_top + (CELL_HEIGHT - text_height) // 2
+        text_y = cell_top + (cell_height - text_height) // 2
         draw.ellipse([dot_left, dot_top, dot_right, dot_bottom], fill=dot_color)
         draw.text((text_x, text_y), text, font=FONT_CANCELLED, fill=text_color)
         strike_y = text_y + text_height // 2
@@ -134,7 +140,7 @@ def _draw_trip_cell(
     minutes_bbox = draw.textbbox((0, 0), minutes_text, font=FONT_MINUTES)
     minutes_width = minutes_bbox[2] - minutes_bbox[0]
     minutes_height = minutes_bbox[3] - minutes_bbox[1]
-    minutes_y = cell_top + (CELL_HEIGHT - minutes_height) // 2
+    minutes_y = cell_top + (cell_height - minutes_height) // 2
     minutes_x = cell_left + TEXT_LEFT_X
     minutes_color = COLOR_GOOD if trip.departed else COLOR_TEXT
 
@@ -142,7 +148,7 @@ def _draw_trip_cell(
     clock_bbox = draw.textbbox((0, 0), clock_text, font=FONT_CLOCK)
     clock_height = clock_bbox[3] - clock_bbox[1]
     clock_x = minutes_x + minutes_width + TEXT_GAP
-    clock_y = cell_top + (CELL_HEIGHT - clock_height) // 2
+    clock_y = cell_top + (cell_height - clock_height) // 2
     clock_color = COLOR_CLOCK_COMMITTED if trip.departed else COLOR_CLOCK
 
     draw.ellipse([dot_left, dot_top, dot_right, dot_bottom], fill=dot_color)
@@ -151,46 +157,52 @@ def _draw_trip_cell(
 
 
 def compose_frame(data: FrameData, width: int = DISPLAY_WIDTH, height: int = DISPLAY_HEIGHT) -> Image.Image:
-    """Compose an RGB frame from FrameData sized for 2 or 3 chained panels."""
+    """Compose an RGB frame from FrameData for 32px or 64px tall panel chains."""
     if width % PANEL_WIDTH != 0:
         raise ValueError(f"Width must be a multiple of {PANEL_WIDTH}, got {width}.")
-    if height != DISPLAY_HEIGHT:
-        raise ValueError(f"Height must be {DISPLAY_HEIGHT}, got {height}.")
+    if height not in (DISPLAY_HEIGHT_SMALL, DISPLAY_HEIGHT):
+        raise ValueError(
+            f"Height must be {DISPLAY_HEIGHT_SMALL} or {DISPLAY_HEIGHT}, got {height}."
+        )
 
     grid_cols = width // PANEL_WIDTH
+    grid_rows = 2 if height == DISPLAY_HEIGHT else 1
+    cell_height = 24 if grid_rows == 2 else height
+    trip_zone_height = grid_rows * cell_height
     image = Image.new("RGB", (width, height), (0, 0, 0))
     draw = ImageDraw.Draw(image)
 
-    trips = list(data.trips)[: grid_cols * GRID_ROWS]
-    for idx in range(grid_cols * GRID_ROWS):
+    trips = list(data.trips)[: grid_cols * grid_rows]
+    for idx in range(grid_cols * grid_rows):
         trip = trips[idx] if idx < len(trips) else None
-        _draw_trip_cell(draw, idx, trip, grid_cols, PANEL_WIDTH)
+        _draw_trip_cell(draw, idx, trip, grid_cols, PANEL_WIDTH, cell_height)
 
     for x in range(PANEL_WIDTH, width, PANEL_WIDTH):
-        draw.line((x, 0, x, TRIP_ZONE_HEIGHT - 1), fill=GRID_LINE_COLOR)
-    draw.line((0, GRID_HORIZONTAL, width - 1, GRID_HORIZONTAL), fill=GRID_LINE_COLOR)
-
-    draw.line((0, SEPARATOR_Y, width - 1, SEPARATOR_Y), fill=SEPARATOR_COLOR)
+        draw.line((x, 0, x, trip_zone_height - 1), fill=GRID_LINE_COLOR)
+    if grid_rows == 2:
+        draw.line((0, GRID_HORIZONTAL, width - 1, GRID_HORIZONTAL), fill=GRID_LINE_COLOR)
+        draw.line((0, SEPARATOR_Y, width - 1, SEPARATOR_Y), fill=SEPARATOR_COLOR)
 
     stations = [
         (STATION_SULLIVAN, "12m"),
         (STATION_UNION, "18m"),
         (STATION_HARVARD, "28m"),
     ]
-    station_blocks = stations[:grid_cols]
-    for idx, (color, label) in enumerate(station_blocks):
-        block_left = idx * PANEL_WIDTH
-        bar_right = block_left + STATION_BAR_WIDTH - 1
-        draw.rectangle(
-            (block_left, STATION_STRIP_TOP, bar_right, height - 1),
-            fill=color,
-        )
+    if height == DISPLAY_HEIGHT:
+        station_blocks = stations[:grid_cols]
+        for idx, (color, label) in enumerate(station_blocks):
+            block_left = idx * PANEL_WIDTH
+            bar_right = block_left + STATION_BAR_WIDTH - 1
+            draw.rectangle(
+                (block_left, STATION_STRIP_TOP, bar_right, height - 1),
+                fill=color,
+            )
 
-        text_bbox = draw.textbbox((0, 0), label, font=FONT_STATION)
-        text_height = text_bbox[3] - text_bbox[1]
-        text_y = STATION_STRIP_TOP + (STATION_STRIP_HEIGHT - text_height) // 2
-        text_x = block_left + STATION_BAR_WIDTH + 2
-        draw.text((text_x, text_y), label, font=FONT_STATION, fill=color)
+            text_bbox = draw.textbbox((0, 0), label, font=FONT_STATION)
+            text_height = text_bbox[3] - text_bbox[1]
+            text_y = STATION_STRIP_TOP + (STATION_STRIP_HEIGHT - text_height) // 2
+            text_x = block_left + STATION_BAR_WIDTH + 2
+            draw.text((text_x, text_y), label, font=FONT_STATION, fill=color)
 
     return image
 
