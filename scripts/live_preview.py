@@ -155,14 +155,19 @@ def _build_frame_data(
                     departed = True
                 time_needed = estimate_time_to_linden(vehicle)
                 if time_needed is not None and trip_id:
-                    prev = drift_cache.get(trip_id)
-                    if prev is not None:
-                        delta = prev - time_needed
-                        if delta > 1:
-                            trend = "improving"
-                        elif delta < -1:
-                            trend = "deteriorating"
-                    next_cache[trip_id] = time_needed
+                    if departed:
+                        next_cache.pop(trip_id, None)
+                        time_needed = 0.0
+                        trend = "stable"
+                    else:
+                        prev = drift_cache.get(trip_id)
+                        if prev is not None:
+                            delta = prev - time_needed
+                            if delta > 1:
+                                trend = "improving"
+                            elif delta < -1:
+                                trend = "deteriorating"
+                        next_cache[trip_id] = time_needed
                     if DEBUG_TREND:
                         print(
                             "trend_debug",
