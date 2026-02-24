@@ -28,7 +28,6 @@ STATION_STRIP_HEIGHT = 15
 STATION_BAR_WIDTH = 2
 
 GRID_LINE_COLOR = (15, 15, 15)
-GRID_VERTICALS = [64, 128]
 GRID_HORIZONTAL = 24
 
 DOT_DIAMETER = 6
@@ -86,10 +85,12 @@ def _dot_color(reliability: str, trend: str) -> tuple[int, int, int]:
     return COLOR_UNKNOWN
 
 
-def _draw_trip_cell(draw: ImageDraw.ImageDraw, index: int, trip: TripRow | None) -> None:
-    col = index % GRID_COLS
-    row = index // GRID_COLS
-    cell_left = col * CELL_WIDTH
+def _draw_trip_cell(
+    draw: ImageDraw.ImageDraw, index: int, trip: TripRow | None, grid_cols: int, cell_width: int
+) -> None:
+    col = index % grid_cols
+    row = index // grid_cols
+    cell_left = col * cell_width
     cell_top = row * CELL_HEIGHT
 
     dot_top = cell_top + (CELL_HEIGHT - DOT_DIAMETER) // 2
@@ -149,32 +150,39 @@ def _draw_trip_cell(draw: ImageDraw.ImageDraw, index: int, trip: TripRow | None)
     draw.text((clock_x, clock_y), clock_text, font=FONT_CLOCK, fill=clock_color)
 
 
-def compose_frame(data: FrameData) -> Image.Image:
-    """Compose a 192x64 RGB frame from FrameData."""
-    image = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), (0, 0, 0))
+def compose_frame(data: FrameData, width: int = DISPLAY_WIDTH, height: int = DISPLAY_HEIGHT) -> Image.Image:
+    """Compose an RGB frame from FrameData sized for 2 or 3 chained panels."""
+    if width % PANEL_WIDTH != 0:
+        raise ValueError(f"Width must be a multiple of {PANEL_WIDTH}, got {width}.")
+    if height != DISPLAY_HEIGHT:
+        raise ValueError(f"Height must be {DISPLAY_HEIGHT}, got {height}.")
+
+    grid_cols = width // PANEL_WIDTH
+    image = Image.new("RGB", (width, height), (0, 0, 0))
     draw = ImageDraw.Draw(image)
 
-    trips = list(data.trips)[: GRID_COLS * GRID_ROWS]
-    for idx in range(GRID_COLS * GRID_ROWS):
+    trips = list(data.trips)[: grid_cols * GRID_ROWS]
+    for idx in range(grid_cols * GRID_ROWS):
         trip = trips[idx] if idx < len(trips) else None
-        _draw_trip_cell(draw, idx, trip)
+        _draw_trip_cell(draw, idx, trip, grid_cols, PANEL_WIDTH)
 
-    for x in GRID_VERTICALS:
+    for x in range(PANEL_WIDTH, width, PANEL_WIDTH):
         draw.line((x, 0, x, TRIP_ZONE_HEIGHT - 1), fill=GRID_LINE_COLOR)
-    draw.line((0, GRID_HORIZONTAL, DISPLAY_WIDTH - 1, GRID_HORIZONTAL), fill=GRID_LINE_COLOR)
+    draw.line((0, GRID_HORIZONTAL, width - 1, GRID_HORIZONTAL), fill=GRID_LINE_COLOR)
 
-    draw.line((0, SEPARATOR_Y, DISPLAY_WIDTH - 1, SEPARATOR_Y), fill=SEPARATOR_COLOR)
+    draw.line((0, SEPARATOR_Y, width - 1, SEPARATOR_Y), fill=SEPARATOR_COLOR)
 
     stations = [
         (STATION_SULLIVAN, "12m"),
         (STATION_UNION, "18m"),
         (STATION_HARVARD, "28m"),
     ]
-    for idx, (color, label) in enumerate(stations):
-        block_left = idx * CELL_WIDTH
+    station_blocks = stations[:grid_cols]
+    for idx, (color, label) in enumerate(station_blocks):
+        block_left = idx * PANEL_WIDTH
         bar_right = block_left + STATION_BAR_WIDTH - 1
         draw.rectangle(
-            (block_left, STATION_STRIP_TOP, bar_right, DISPLAY_HEIGHT - 1),
+            (block_left, STATION_STRIP_TOP, bar_right, height - 1),
             fill=color,
         )
 

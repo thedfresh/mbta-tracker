@@ -3,3 +3,5 @@ pillow
 pyyaml
 pytest
 python-dotenv
+numpy
+adafruit-blinka-raspberry-pi5-piomatter

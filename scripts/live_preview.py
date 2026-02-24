@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
+import sys
 import threading
 import time
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from pathlib import Path
 from typing import Any
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.config import load_config
 from src.data.collector_client import fetch_snapshot
@@ -345,7 +348,7 @@ def main() -> int:
                 )
                 frame_data, minutes_debug, drift_cache = _build_frame_data(result, drift_cache)
                 reliability = frame_data.trips[0].reliability if frame_data.trips else "NONE"
-                image = compose_frame(frame_data)
+                image = compose_frame(frame_data, width=config.display.width, height=config.display.height)
                 if output_emulator:
                     save_frame(image, str(FRAME_PATH))
                 if matrix is not None:

@@ -29,6 +29,15 @@ def _dot_center(index: int) -> tuple[int, int]:
     )
 
 
+def _dot_center_cols(index: int, cols: int) -> tuple[int, int]:
+    col = index % cols
+    row = index // cols
+    return (
+        col * CELL_WIDTH + DOT_CENTER_OFFSET,
+        row * CELL_HEIGHT + CELL_HEIGHT // 2,
+    )
+
+
 def test_compose_frame_size_and_mode() -> None:
     data = FrameData(trips=[], ticker_text="Test")
     image = compose_frame(data)
@@ -150,3 +159,27 @@ def test_minutes_rounding_thresholds() -> None:
     data_two = FrameData(trips=[TripRow(1.6, "12:00", GOOD)], ticker_text="")
     image_two = compose_frame(data_two)
     assert ImageChops.difference(image_one, image_two).getbbox() is not None
+
+
+def test_compose_frame_two_panel_layout() -> None:
+    data = FrameData(
+        trips=[
+            TripRow(1, "12:00", GOOD),
+            TripRow(2, "12:02", RISKY),
+            TripRow(3, "12:03", BAD),
+            TripRow(4, "12:04", UNKNOWN),
+        ],
+        ticker_text="",
+    )
+    image = compose_frame(data, width=128, height=64)
+    pixels = image.load()
+
+    assert image.size == (128, 64)
+    assert pixels[_dot_center_cols(0, 2)] == COLOR_GOOD
+    assert pixels[_dot_center_cols(1, 2)] == COLOR_RISKY
+    assert pixels[_dot_center_cols(2, 2)] == COLOR_BAD
+    assert pixels[_dot_center_cols(3, 2)] == COLOR_UNKNOWN
+
+    y = 56
+    assert pixels[1, y] == STATION_SULLIVAN
+    assert pixels[65, y] == STATION_UNION

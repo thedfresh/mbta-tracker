@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 from PIL import Image
 
@@ -68,13 +67,17 @@ class MatrixDisplay:
             rotation=piomatter.Orientation.Normal,
         )
         self._framebuffer = np.zeros((geometry.height, geometry.width, 3), dtype=np.uint8)
-        self._matrix = piomatter.PioMatter(
-            colorspace=piomatter.Colorspace.RGB888Packed,
-            pinout=piomatter.Pinout.AdafruitMatrixBonnet,
-            framebuffer=self._framebuffer,
-            geometry=piomatter_geometry,
-            queue_depth=2,
-        )
+        matrix_kwargs = {
+            "colorspace": piomatter.Colorspace.RGB888Packed,
+            "pinout": piomatter.Pinout.AdafruitMatrixBonnet,
+            "framebuffer": self._framebuffer,
+            "geometry": piomatter_geometry,
+        }
+        try:
+            # Newer builds support queue_depth; older builds do not.
+            self._matrix = piomatter.PioMatter(**matrix_kwargs, queue_depth=2)
+        except TypeError:
+            self._matrix = piomatter.PioMatter(**matrix_kwargs)
 
         # Brightness support may vary by library version.
         if hasattr(self._matrix, "brightness"):
