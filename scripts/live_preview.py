@@ -325,7 +325,7 @@ def main() -> int:
     parser.add_argument(
         "--rotate",
         choices=["0", "180"],
-        default="0",
+        default="180",
         help="Rotate output frame before sending to hardware/emulator.",
     )
     parser.add_argument(
